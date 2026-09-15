@@ -222,6 +222,7 @@ async function mixedPlatformFixture(includeThermostat = false) {
   };
   const platform = new BroadlinkCloudPlatform({ error() {}, warn() {}, info() {}, debug() {} } as any, {
     platform: 'BroadlinkCloud', sessionFile: 'C:/session.json', fans: [{ remoteId: 'fan1', hubId: 'hub1' }],
+    buttons: [{ id: 'light', name: 'Fan light', remoteId: 'fan1', hubId: 'hub1', command: 'lighton/off' }],
     acPresets: includeThermostat ? [] : [{ id: 'cool', name: 'AC Cool', remoteId: 'ac1', hubId: 'hub1', power: true, temperature: 25, mode: 'cool', speed: 'auto', swing: false }],
     ...(includeThermostat ? { airConditioners: [{ remoteId: 'ac1', hubId: 'hub1', name: 'TCL AC' }] } : {}),
   } as any, api, {
@@ -235,6 +236,7 @@ async function mixedPlatformFixture(includeThermostat = false) {
   return { platform, api, sent, release: () => release(), sensorReads: () => sensorReads,
     speed: accessories.find(a => a.getService(api.hap.Service.Fanv2)).getService(api.hap.Service.Fanv2).getCharacteristic(api.hap.Characteristic.RotationSpeed),
     preset: accessories.find(a => a.context.acPreset)?.getService(api.hap.Service.Switch).getCharacteristic(api.hap.Characteristic.On),
+    button: accessories.find(a => a.context.genericButton)?.getService(api.hap.Service.Switch).getCharacteristic(api.hap.Characteristic.On),
   };
 }
 test('fan and AC commands serialize on the same hub across cloud refreshes', async () => {
@@ -359,4 +361,99 @@ test('expiry swallowed inside AC discovery still renews once and creates the pre
     createControl: () => ({ sendCode: async () => { sends++; } }),
   });
   await platform.refresh(); assert.equal(renewals, 1); assert.equal(accessories.length, 1); assert.equal(sends, 0); api.emit('shutdown');
+});
+
+test('fan empty form placeholders are ignored but partial or wrongly typed rows fail startup', () => {
+  const api = new HomebridgeAPI(); const log = {error(){},warn(){},info(){},debug(){}} as any;
+  const construct = (fans:any) => new BroadlinkCloudPlatform(log,{platform:'BroadlinkCloud',sessionFile:'C:/session.json',fans} as any,api);
+  assert.doesNotThrow(()=>construct([{exposeLightToggle:false}]));
+  for(const fan of [{remoteId:'fan1'}, {remoteId:'fan1',hubId:'hub1',exposeLightToggle:'yes'}, {remoteId:'fan1',hubId:'hub1',name:8}])assert.throws(()=>construct([fan]));
+});
+
+test('generic button shares fan hub queue across refresh and is blocked after shutdown', async () => {
+  for (const shutdown of [false,true]) {
+    const f=await mixedPlatformFixture();const first=f.speed.handleSetRequest(50);await new Promise(setImmediate);
+    await f.platform.refresh();const second=f.button.handleSetRequest(true);
+    const done=shutdown ? assert.rejects(second,e=>e===-70402) : second;
+    await new Promise(setImmediate);assert.deepEqual(f.sent,['1']);
+    if(shutdown)f.api.emit('shutdown');f.release();await Promise.all([first,done]);
+    assert.deepEqual(f.sent,shutdown?['1']:['1','lighton/off']);f.api.emit('shutdown');
+  }
+});
+
+test('explicit fan mapping reaches selected commands through real HAP',async()=>{
+  const api=new HomebridgeAPI();const accessories:any[]=[];const sent:string[]=[];
+  api.registerPlatformAccessories=(_p,_n,list)=>{accessories.push(...list);};
+  const platform=new BroadlinkCloudPlatform({error(){},warn(){},info(){},debug(){}} as any,{
+    platform:'BroadlinkCloud',sessionFile:'C:/session.json',fans:[{remoteId:'fan1',hubId:'hub1',commands:{off:'Stop',speeds:['Slow','Fast']}}],
+  } as any,api,{
+    readSession:async()=>({userId:'u',loginSession:'s',familyId:'f'}),
+    createClient:()=>({listDevices:async()=>[{endpointId:'hub1'}],getRemote:async()=>({...remote,irData:['Stop','Slow','Fast'].map(command)})}),
+    createSender:()=>({send:async(_h,c)=>{sent.push(c.name!);}}),
+  });
+  await platform.refresh();assert.equal(accessories.length,1);
+  const speed=accessories[0].getService(api.hap.Service.Fanv2).getCharacteristic(api.hap.Characteristic.RotationSpeed);
+  await speed.handleSetRequest(50);await speed.handleSetRequest(100);await speed.handleSetRequest(0);
+  assert.deepEqual(sent,['Slow','Fast','Stop']);api.emit('shutdown');
+});
+
+test('omitted session file uses the Homebridge storage directory',async()=>{
+  const api=new HomebridgeAPI();let seen='';
+  const platform=new BroadlinkCloudPlatform({error(){},warn(){},info(){},debug(){}} as any,{platform:'BroadlinkCloud'},api,{
+    readSession:async path=>{seen=path;throw Error('missing');},
+  });
+  await platform.refresh();assert.ok(seen.endsWith('broadlink-session.json'));assert.ok(seen.startsWith(api.user.storagePath()));api.emit('shutdown');
+});
+
+test('untouched optional command objects keep legacy fans and partial mappings fail',async()=>{
+  const api=new HomebridgeAPI();const accessories:any[]=[];
+  api.registerPlatformAccessories=(_p,_n,list)=>{accessories.push(...list);};api.updatePlatformAccessories=()=>{};
+  const log={error(){},warn(){},info(){},debug(){}} as any;
+  for(const commands of [{},{speeds:[]},{off:'',lightToggle:'',speeds:[]}]) {
+    const platform=new BroadlinkCloudPlatform(log,{platform:'BroadlinkCloud',sessionFile:'C:/session.json',fans:[{remoteId:'fan1',hubId:'hub1',commands}]} as any,api,{
+      readSession:async()=>({userId:'u',loginSession:'s',familyId:'f'}),createClient:()=>({listDevices:async()=>[{endpointId:'hub1'}],getRemote:async()=>remote}),
+    });
+    const before=accessories.length;await platform.refresh();assert.equal(accessories.length,before+1);
+  }
+  for(const commands of [{off:'Stop',speeds:[]},{off:'',speeds:['Slow']},{lightToggle:'Lamp'}, {unknown:''}]) {
+    assert.throws(()=>new BroadlinkCloudPlatform(log,{platform:'BroadlinkCloud',sessionFile:'C:/session.json',fans:[{remoteId:'fan1',hubId:'hub1',commands}]} as any,api));
+  }
+  api.emit('shutdown');
+});
+
+test('discovered light service on cached fan is persisted once when added',async()=>{
+  const api=new HomebridgeAPI();const snapshots:boolean[]=[];
+  api.updatePlatformAccessories=list=>{snapshots.push(!!list[0].getService(api.hap.Service.Switch));};
+  const platform=new BroadlinkCloudPlatform({error(){},warn(){},info(){},debug(){}} as any,{platform:'BroadlinkCloud',sessionFile:'C:/session.json',fans:[{remoteId:'fan1',hubId:'hub1',exposeLightToggle:true}]} as any,api,{
+    readSession:async()=>({userId:'u',loginSession:'s',familyId:'f'}),createClient:()=>({listDevices:async()=>[{endpointId:'hub1'}],getRemote:async()=>remote}),
+  });
+  const cached=new api.platformAccessory('Fan',api.hap.uuid.generate('homebridge-broadlink-cloud:fan1'));
+  cached.addService(api.hap.Service.Fanv2,'Fan');platform.configureAccessory(cached);await platform.refresh();await platform.refresh();
+  assert.deepEqual(snapshots,[true]);api.emit('shutdown');
+});
+
+test('blank optional sessionFile and lightToggle use defaults without weakening required selectors',async()=>{
+  const api=new HomebridgeAPI();let seen='';const accessories:any[]=[];
+  api.registerPlatformAccessories=(_p,_n,list)=>{accessories.push(...list);};api.updatePlatformAccessories=()=>{};
+  const platform=new BroadlinkCloudPlatform({error(){},warn(){},info(){},debug(){}} as any,{
+    platform:'BroadlinkCloud',sessionFile:'',fans:[{remoteId:'fan1',hubId:'hub1',commands:{off:'Stop',speeds:['Slow'],lightToggle:''}}],
+  } as any,api,{
+    readSession:async path=>{seen=path;return {userId:'u',loginSession:'s',familyId:'f'};},
+    createClient:()=>({listDevices:async()=>[{endpointId:'hub1'}],getRemote:async()=>({...remote,irData:['Stop','Slow'].map(command)})}),
+  });
+  await platform.refresh();assert.equal(accessories.length,1);assert.ok(seen.startsWith(api.user.storagePath()));assert.ok(seen.endsWith('broadlink-session.json'));api.emit('shutdown');
+});
+
+test('blank optional fan names use the default display name',async()=>{
+  for(const name of ['', '   ']) {
+    const api=new HomebridgeAPI();const accessories:any[]=[];
+    api.registerPlatformAccessories=(_p,_n,list)=>{accessories.push(...list);};api.updatePlatformAccessories=()=>{};
+    const platform=new BroadlinkCloudPlatform({error(){},warn(){},info(){},debug(){}} as any,{
+      platform:'BroadlinkCloud',sessionFile:'C:/session.json',fans:[{remoteId:'fan1',hubId:'hub1',name}],
+    } as any,api,{
+      readSession:async()=>({userId:'u',loginSession:'s',familyId:'f'}),
+      createClient:()=>({listDevices:async()=>[{endpointId:'hub1'}],getRemote:async()=>remote}),
+    });
+    await platform.refresh();assert.equal(accessories.length,1);assert.equal(accessories[0].displayName,'BroadLink Fan');api.emit('shutdown');
+  }
 });

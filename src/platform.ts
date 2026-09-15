@@ -1,9 +1,10 @@
-import { isAbsolute, win32 } from 'node:path';
+import { isAbsolute, join, win32 } from 'node:path';
 import type { API, Logger, PlatformAccessory, PlatformConfig, Service } from 'homebridge';
 import { BroadlinkCloudClient, CloudSessionExpiredError } from './client.ts';
 import type { CloudSession, Endpoint, Remote, RemoteCommand } from './client.ts';
-import { buildFanMapping } from './fan-mapping.ts';
-import type { FanMapping } from './fan-mapping.ts';
+import { buildFanMapping, validateFanCommands, validCommandName } from './fan-mapping.ts';
+import type { FanMapping, FanCommands } from './fan-mapping.ts';
+import { ButtonCoordinator } from './buttons.ts';
 import { AcPresetCoordinator } from './ac-presets.ts';
 import { BroadlinkCloudControl } from './control.ts';
 import { AcThermostatCoordinator } from './ac-thermostat.ts';
@@ -13,7 +14,7 @@ import { SessionManager } from './session.ts';
 
 export const PLUGIN_NAME = 'homebridge-broadlink-cloud';
 export const PLATFORM_NAME = 'BroadlinkCloud';
-interface FanConfig { remoteId: string; hubId: string; name?: string; exposeLightToggle?: boolean }
+interface FanConfig { remoteId: string; hubId: string; name?: string; exposeLightToggle?: boolean; commands?: FanCommands }
 interface Sender { send(hub: Endpoint, command: RemoteCommand): Promise<void> }
 interface Dependencies {
   readSession(path: string): Promise<CloudSession>;
@@ -46,6 +47,7 @@ export class BroadlinkCloudPlatform {
   private readonly sessionFile: string;
   private readonly configured: FanConfig[];
   private readonly acPresets: AcPresetCoordinator;
+  private readonly buttons: ButtonCoordinator;
   private readonly airConditioners: AcThermostatCoordinator;
   private readonly cache = new Map<string, PlatformAccessory>();
   private readonly fans = new Map<string, FanRuntime>();
@@ -58,13 +60,37 @@ export class BroadlinkCloudPlatform {
 
   constructor(log: Logger, config: PlatformConfig, api: API, deps: Partial<Dependencies> = {}) {
     this.log = log; this.api = api;
-    this.sessionFile = config.sessionFile;
+    this.sessionFile = config.sessionFile === undefined || config.sessionFile === '' ? join(api.user.storagePath(), 'broadlink-session.json') : config.sessionFile;
     if (typeof this.sessionFile !== 'string' || !(isAbsolute(this.sessionFile) || win32.isAbsolute(this.sessionFile))) throw new Error('sessionFile must be an absolute path');
     const manager = new SessionManager({ sessionFile: this.sessionFile, email: config.email, password: config.password });
     this.deps = { ...defaults, readSession: () => manager.getSession(), renewSession: () => manager.renew(), ...deps };
-    const fans = config.fans === undefined ? [] : config.fans;
-    if (!Array.isArray(fans) || fans.some((fan: FanConfig) => !fan || typeof fan.remoteId !== 'string' || !fan.remoteId.trim() || typeof fan.hubId !== 'string' || !fan.hubId.trim())) throw new Error('Each fan requires explicit remoteId and hubId');
+    const rows = config.fans === undefined ? [] : config.fans;
+    if (!Array.isArray(rows)) throw new Error('fans must be an array');
+    const fans = rows.filter(value => !(value && typeof value === 'object' && !Array.isArray(value)
+      && value.exposeLightToggle === false && Object.keys(value).every(key => key === 'exposeLightToggle'))).map(value => {
+        if (typeof value?.name === 'string' && !value.name.trim()) value = { ...value, name: undefined };
+        // The advanced form may materialize an untouched optional mapping object.
+        // Only entirely empty, known fields are placeholders; partial mappings fail below.
+        const commands = value?.commands;
+        const empty = commands && typeof commands === 'object' && !Array.isArray(commands)
+          && Object.entries(commands).every(([key, field]) =>
+            ((key === 'off' || key === 'lightToggle') && field === '')
+            || (key === 'speeds' && Array.isArray(field) && field.length === 0));
+        if (empty) return { ...value, commands: undefined };
+        // An unselected optional light selector is saved as an empty string by the form.
+        if (commands && typeof commands === 'object' && !Array.isArray(commands) && commands.lightToggle === '') {
+          const { lightToggle: _unused, ...selected } = commands;
+          return { ...value, commands: selected };
+        }
+        return value;
+      });
+    if (fans.some((fan: FanConfig) => !fan || !validCommandName(fan.remoteId) || !validCommandName(fan.hubId)
+      || fan.remoteId !== fan.remoteId.trim() || fan.hubId !== fan.hubId.trim()
+      || (fan.name !== undefined && !validCommandName(fan.name))
+      || (fan.exposeLightToggle !== undefined && typeof fan.exposeLightToggle !== 'boolean'))) throw new Error('Each fan requires valid remoteId, hubId and optional name and exposeLightToggle');
+    for (const fan of fans) if (fan.commands !== undefined) validateFanCommands(fan.commands);
     this.configured = fans;
+    this.buttons = new ButtonCoordinator(log, config.buttons, api);
     this.acPresets = new AcPresetCoordinator(log, config.acPresets, api);
     this.airConditioners = new AcThermostatCoordinator(log, config.airConditioners, api);
     const thermostatRemotes = new Set<string>((config.airConditioners ?? []).map((ac: { remoteId: string }) => ac.remoteId));
@@ -80,6 +106,7 @@ export class BroadlinkCloudPlatform {
     api.on('shutdown', () => {
       this.stopped = true; clearInterval(this.timer);
       this.acPresets.shutdown();
+      this.buttons.shutdown();
       this.airConditioners.shutdown();
       for (const update of this.pendingUpdates) clearImmediate(update);
       this.pendingUpdates.clear();
@@ -88,6 +115,7 @@ export class BroadlinkCloudPlatform {
   }
 
   configureAccessory(accessory: PlatformAccessory): void {
+    if (this.buttons.configureAccessory(accessory)) return;
     if (this.airConditioners.configureAccessory(accessory)) return;
     if (this.acPresets.configureAccessory(accessory)) return;
     // Do not persist sessions, commands or assumed appliance state in Homebridge's cache.
@@ -136,7 +164,7 @@ export class BroadlinkCloudPlatform {
         try {
           const hub = endpoints.find(e => e.endpointId === config.hubId);
           if (!hub) throw new Error('Configured hub unavailable');
-          const mapping = buildFanMapping(await client.getRemote(config.remoteId));
+          const mapping = buildFanMapping(await client.getRemote(config.remoteId), config.commands);
           if ([mapping.off, ...mapping.speeds, ...(config.exposeLightToggle && mapping.lightToggle ? [mapping.lightToggle] : [])].some(c => c.codeList.length !== 1)) throw new Error('Unsupported command sequence');
           if (this.stopped) return;
           let runtime = this.fans.get(config.remoteId);
@@ -157,12 +185,15 @@ export class BroadlinkCloudPlatform {
           this.log.warn('Fan discovery failed; cached accessory retained.');
         }
       }
+      await this.buttons.refresh(endpoints, client, control);
+      if (remoteSessionExpired) throw new CloudSessionExpiredError();
       await this.acPresets.refresh(endpoints, client, control);
       if (remoteSessionExpired) throw new CloudSessionExpiredError();
       await this.airConditioners.refresh(endpoints, client, control, sensors);
       if (remoteSessionExpired) throw new CloudSessionExpiredError();
     } catch (error) {
       this.acPresets.unavailable();
+      this.buttons.unavailable();
       this.airConditioners.unavailable();
       for (const fan of this.fans.values()) fan.available = false;
       if (error instanceof CloudSessionExpiredError) {
@@ -195,6 +226,8 @@ export class BroadlinkCloudPlatform {
   }
   private bind(fan: FanRuntime): void {
     const { Service: S, Characteristic: C } = this.api.hap;
+    const hadFan = !!fan.accessory.getService(S.Fanv2);
+    const hadLight = !!fan.accessory.getService(S.Switch);
     const service = fan.accessory.getService(S.Fanv2) ?? fan.accessory.addService(S.Fanv2, fan.config.name ?? 'BroadLink Fan');
     // RF remotes provide no speed feedback. An unknown startup speed is not a
     // communication failure: display Off until a command is acknowledged.
@@ -221,6 +254,7 @@ export class BroadlinkCloudPlatform {
       });
       light.updateCharacteristic(C.On, false);
     }
+    if (!hadFan || (!hadLight && fan.accessory.getService(S.Switch))) this.api.updatePlatformAccessories([fan.accessory]);
   }
   private async setSpeed(fan: FanRuntime, service: Service, requested: number): Promise<void> {
     const count = fan.mapping!.speeds.length;

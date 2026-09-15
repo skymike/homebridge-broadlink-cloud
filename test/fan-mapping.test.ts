@@ -51,3 +51,14 @@ test('rejects empty or malformed codes for each mapped action', () => {
     }
   }
 });
+
+test('explicit custom names preserve configured speed order and reject ambiguous or unsafe selectors', () => {
+  const r = remote([command('Stop'), command('Slow'), command('Fast'), command('Lamp')]);
+  const config = { off: 'Stop', speeds: ['Slow', 'Fast'], lightToggle: 'Lamp' };
+  assert.deepEqual(buildFanMapping(r, config).speeds.map(c => c.name), ['Slow', 'Fast']);
+  for (const bad of [{...config, speeds: []}, {...config, speeds: ['Slow','Slow']}, {...config, off: 'stop'}]) {
+    assert.throws(() => buildFanMapping(r, bad));
+  }
+  assert.throws(() => buildFanMapping(remote([...r.irData,command('Stop')]), config));
+  assert.throws(() => buildFanMapping(remote([{...command('Stop'),codeList:[{code:'a'},{code:'b'}]},command('Slow')]), {off:'Stop',speeds:['Slow']}));
+});

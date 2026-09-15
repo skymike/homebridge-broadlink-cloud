@@ -1,0 +1,39 @@
+<link rel="stylesheet" href="style.css">
+<div id="broadlink-setup">
+  <h3>BroadLink Cloud</h3>
+  <p>Connect your RM MAX remotes to Apple Home. This version supports EU cloud accounts.</p>
+  <div id="notice" role="status" aria-live="polite"></div>
+  <section class="card p-3 mb-3">
+    <h4>1. Connect your home</h4>
+    <button id="existing" class="btn btn-outline-primary mb-3">Discover saved account</button>
+    <details><summary>Sign in or reconnect</summary>
+      <label for="email">BroadLink email</label><input id="email" type="email" autocomplete="username" class="form-control">
+      <label for="password">BroadLink password</label><input id="password" type="password" autocomplete="current-password" class="form-control">
+      <button id="login" class="btn btn-primary mt-2">Sign in and list homes</button>
+      <p class="small mt-2">Credentials stay on your Homebridge. Saving the account stores them in its settings for automatic re-login. Sign-in alone does not replace your saved session.</p>
+    </details>
+    <div id="family-section" hidden><label for="family">BroadLink home</label><select id="family" class="form-select"></select><button id="discover" class="btn btn-primary mt-2">Discover this home</button><button id="save-account" class="btn btn-outline-primary mt-2">Save selected account</button></div>
+  </section>
+  <section id="mapping" class="card p-3 mb-3" hidden>
+    <h4>2. Choose a remote</h4>
+    <label for="hub">RM hub</label><select id="hub" class="form-select"></select>
+    <label for="remote">Remote</label><select id="remote" class="form-select"></select>
+    <button id="load-remote" class="btn btn-outline-primary mt-2">Load remote commands</button>
+    <div id="remote-controls" hidden>
+      <label for="kind">Show in Apple Home as</label><select id="kind" class="form-select"><option value="fan">Ceiling fan</option><option value="button">Momentary command button</option><option value="ac" id="ac-option" disabled>Supported TCL AC with room sensor</option></select>
+      <label for="device-name">Apple Home name</label><input id="device-name" maxlength="100" class="form-control">
+      <div id="fan-fields">
+        <label for="off-command">Fan Off command</label><select id="off-command" class="form-select"></select>
+        <label>Speed commands, from lowest to highest</label><div id="speeds"></div><button id="add-speed" class="btn btn-sm btn-outline-secondary mt-2">Add speed level</button>
+        <label for="light-command">Optional light-toggle command</label><select id="light-command" class="form-select"></select>
+      </div>
+      <div id="button-fields" hidden><label for="button-command">Command</label><select id="button-command" class="form-select"></select><p class="small">A momentary button sends one command and resets. It does not report the appliance's physical state.</p></div>
+      <p id="ac-fields" hidden>The selected remote matches the verified TCL profile. Its RM hub should be in the same room as the AC for temperature and humidity readings.</p>
+      <p id="command-note" class="small"></p>
+      <button id="add" class="btn btn-primary mt-2">Add or update mapping</button>
+    </div>
+  </section>
+  <section class="card p-3 mb-3"><h4>3. Review and save</h4><div id="configured"></div><button id="save" class="btn btn-success mt-2">Save mappings</button><p class="small mt-2">Restart Homebridge after saving. Saving mappings does not operate appliances. Removing a mapping disables its cached accessory.</p></section>
+  <details id="advanced"><summary>Advanced settings</summary><p>Use the form below for existing profiles, session paths, or manual configuration.</p></details>
+</div>
+<script src="app.js"></script>

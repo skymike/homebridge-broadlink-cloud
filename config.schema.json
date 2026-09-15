@@ -5,44 +5,198 @@
   "schema": {
     "type": "object",
     "properties": {
-      "name": {"type":"string","default":"BroadLink Cloud"},
-      "sessionFile": {"title":"Session file (absolute path)","type":"string","required":true},
-      "email": {"title":"BroadLink account email","type":"string","description":"Optional: enter together with your password to automatically re-login when the saved session expires."},
-      "password": {"title":"BroadLink account password","type":"string","format":"password","description":"Enter directly here in Homebridge. Used only for account re-login; never included in plugin logs."},
+      "name": {
+        "type": "string",
+        "default": "BroadLink Cloud"
+      },
+      "sessionFile": {
+        "title": "Session file (absolute path)",
+        "type": "string",
+        "description": "Optional. Defaults to broadlink-session.json in Homebridge storage; guided setup manages it."
+      },
+      "email": {
+        "title": "BroadLink account email",
+        "type": "string",
+        "description": "Optional: enter together with your password to automatically re-login when the saved session expires."
+      },
+      "password": {
+        "title": "BroadLink account password",
+        "type": "string",
+        "format": "password",
+        "description": "Enter directly here in Homebridge. Used only for account re-login; never included in plugin logs."
+      },
       "airConditioners": {
-        "type":"array", "title":"TCL AC with RM MAX room sensor", "items": {
-          "type":"object", "properties": {
-            "name":{"type":"string","title":"Name"},
-            "remoteId":{"type":"string","title":"AC remote ID","required":true},
-            "hubId":{"type":"string","title":"RM MAX hub and temperature sensor ID","required":true}
+        "type": "array",
+        "title": "TCL AC with RM MAX room sensor",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Name"
+            },
+            "remoteId": {
+              "type": "string",
+              "title": "AC remote ID",
+              "required": true
+            },
+            "hubId": {
+              "type": "string",
+              "title": "RM MAX hub and temperature sensor ID",
+              "required": true
+            }
           }
-        }
+        },
+        "minItems": 0,
+        "default": []
       },
       "acPresets": {
-        "type":"array", "title":"Optional momentary TCL presets", "minItems":0, "default":[], "items": {
-          "type":"object", "properties": {
-            "id":{"type":"string","required":true},
-            "name":{"type":"string","required":true},
-            "remoteId":{"type":"string","required":true},
-            "hubId":{"type":"string","required":true},
-            "power":{"type":"boolean","required":true},
-            "temperature":{"type":"integer","minimum":16,"maximum":30,"required":true},
-            "mode":{"type":"string","enum":["auto","cool","dry","fan","heat"],"required":true},
-            "speed":{"type":"string","enum":["auto","low","medium","high"],"required":true},
-            "swing":{"type":"boolean","required":true}
+        "type": "array",
+        "title": "Optional momentary TCL presets",
+        "minItems": 0,
+        "default": [],
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "required": true
+            },
+            "name": {
+              "type": "string",
+              "required": true
+            },
+            "remoteId": {
+              "type": "string",
+              "required": true
+            },
+            "hubId": {
+              "type": "string",
+              "required": true
+            },
+            "power": {
+              "type": "boolean",
+              "required": true
+            },
+            "temperature": {
+              "type": "integer",
+              "minimum": 16,
+              "maximum": 30,
+              "required": true
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "cool",
+                "dry",
+                "fan",
+                "heat"
+              ],
+              "required": true
+            },
+            "speed": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "low",
+                "medium",
+                "high"
+              ],
+              "required": true
+            },
+            "swing": {
+              "type": "boolean",
+              "required": true
+            }
           }
         }
       },
       "fans": {
-        "type":"array", "title":"Configured fan remotes", "items": {
-          "type":"object", "properties": {
-            "name":{"type":"string","title":"Name"},
-            "remoteId":{"type":"string","title":"Fan remote ID","required":true},
-            "hubId":{"type":"string","title":"RM hub ID","required":true},
-            "exposeLightToggle":{"type":"boolean","title":"Expose momentary light-toggle switch","default":false}
+        "type": "array",
+        "title": "Configured fan remotes",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Name"
+            },
+            "remoteId": {
+              "type": "string",
+              "title": "Fan remote ID",
+              "required": true
+            },
+            "hubId": {
+              "type": "string",
+              "title": "RM hub ID",
+              "required": true
+            },
+            "exposeLightToggle": {
+              "type": "boolean",
+              "title": "Expose momentary light-toggle switch",
+              "default": false
+            },
+            "commands": {
+              "type": "object",
+              "title": "Explicit BroadLink command names (optional)",
+              "properties": {
+                "off": {
+                  "type": "string",
+                  "title": "Off command",
+                  "required": true
+                },
+                "speeds": {
+                  "type": "array",
+                  "title": "Speed commands from lowest to highest",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "lightToggle": {
+                  "type": "string",
+                  "title": "Optional light-toggle command"
+                }
+              }
+            }
+          }
+        },
+        "minItems": 0,
+        "default": []
+      },
+      "buttons": {
+        "type": "array",
+        "title": "Momentary remote command buttons",
+        "minItems": 0,
+        "default": [],
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "required": true
+            },
+            "name": {
+              "type": "string",
+              "required": true
+            },
+            "remoteId": {
+              "type": "string",
+              "required": true
+            },
+            "hubId": {
+              "type": "string",
+              "required": true
+            },
+            "command": {
+              "type": "string",
+              "required": true
+            }
           }
         }
       }
     }
-  }
+  },
+  "customUi": true
 }
