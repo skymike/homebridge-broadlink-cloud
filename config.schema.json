@@ -1,0 +1,46 @@
+{
+  "pluginAlias": "BroadlinkCloud",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {"type":"string","default":"BroadLink Cloud"},
+      "sessionFile": {"title":"Session file (absolute path)","type":"string","required":true},
+      "airConditioners": {
+        "type":"array", "title":"TCL AC with RM MAX room sensor", "items": {
+          "type":"object", "properties": {
+            "name":{"type":"string","title":"Name"},
+            "remoteId":{"type":"string","title":"AC remote ID","required":true},
+            "hubId":{"type":"string","title":"RM MAX hub and temperature sensor ID","required":true}
+          }
+        }
+      },
+      "acPresets": {
+        "type":"array", "title":"Optional momentary TCL presets", "items": {
+          "type":"object", "properties": {
+            "id":{"type":"string","required":true},
+            "name":{"type":"string","required":true},
+            "remoteId":{"type":"string","required":true},
+            "hubId":{"type":"string","required":true},
+            "power":{"type":"boolean","required":true},
+            "temperature":{"type":"integer","minimum":16,"maximum":30,"required":true},
+            "mode":{"type":"string","enum":["auto","cool","dry","fan","heat"],"required":true},
+            "speed":{"type":"string","enum":["auto","low","medium","high"],"required":true},
+            "swing":{"type":"boolean","required":true}
+          }
+        }
+      },
+      "fans": {
+        "type":"array", "title":"Configured fan remotes", "items": {
+          "type":"object", "properties": {
+            "name":{"type":"string","title":"Name"},
+            "remoteId":{"type":"string","title":"Fan remote ID","required":true},
+            "hubId":{"type":"string","title":"RM hub ID","required":true},
+            "exposeLightToggle":{"type":"boolean","title":"Expose momentary light-toggle switch","default":false}
+          }
+        }
+      }
+    }
+  }
+}
