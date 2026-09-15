@@ -196,7 +196,9 @@ export class BroadlinkCloudPlatform {
   private bind(fan: FanRuntime): void {
     const { Service: S, Characteristic: C } = this.api.hap;
     const service = fan.accessory.getService(S.Fanv2) ?? fan.accessory.addService(S.Fanv2, fan.config.name ?? 'BroadLink Fan');
-    const readSpeed = () => { if (!fan.available || fan.speed === undefined) throw this.failure(); return fan.speed; };
+    // RF remotes provide no speed feedback. An unknown startup speed is not a
+    // communication failure: display Off until a command is acknowledged.
+    const readSpeed = () => { if (!fan.available) throw this.failure(); return fan.speed ?? 0; };
     service.getCharacteristic(C.Active).onGet(() => readSpeed() > 0 ? 1 : 0).onSet(async value => {
       if (value !== 0 && value !== 1) throw this.invalid();
       await this.enqueue(fan, async () => {

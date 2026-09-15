@@ -52,11 +52,13 @@ function fixture(overrides: any = {}, exposeLightToggle = true) {
   const platform = new BroadlinkCloudPlatform({ error(message: string) { logs.push(message); }, warn(message: string) { logs.push(message); }, info() {}, debug() {} } as any, { platform: 'BroadlinkCloud', sessionFile: 'C:/session.json', fans: [{ remoteId: 'fan1', hubId: 'hub1', exposeLightToggle }] } as any, api, deps);
   return { platform, accessories, commands, events, logs };
 }
-test('registers before services, exposes fan levels and keeps unknown state unavailable', async () => {
+test('registers before services and exposes controllable startup display without sending commands', async () => {
   const f = fixture(); await f.platform.refresh();
   assert.equal(f.accessories.length, 1);
   const fan = f.accessories[0].getService('fan')!;
-  assert.throws(() => fan.getCharacteristic('active').getter!(), /-70402/);
+  assert.equal(fan.getCharacteristic('active').getter!(), 0);
+  assert.equal(fan.getCharacteristic('speed').getter!(), 0);
+  assert.deepEqual(f.commands, []);
   await fan.getCharacteristic('speed').setter!(100);
   assert.deepEqual(f.commands, ['2']);
   assert.equal(fan.getCharacteristic('active').getter!(), 1);
@@ -70,7 +72,7 @@ test('failed send does not commit assumed state, retry or expose upstream secret
   const fan = f.accessories[0].getService('fan')!;
   await assert.rejects(fan.getCharacteristic('speed').setter!(50), /-70402/);
   assert.equal(attempts, 1);
-  assert.throws(() => fan.getCharacteristic('speed').getter!(), /-70402/);
+  assert.equal(fan.getCharacteristic('speed').getter!(), 0);
 });
 test('serializes fan and light controls and momentary light does not change fan state', async () => {
   let release!: () => void; const sent: string[] = [];
