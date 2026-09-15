@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRequire} from 'node:module';
+import {hap,PlatformAccessory} from './homebridge-runtime.ts';
 import {AcThermostatCoordinator} from '../src/ac-thermostat.ts';
 import {encodeTcl,TCL_PROFILE_ID} from '../src/tcl.ts';
-const require=createRequire(import.meta.url);const hr=createRequire(require.resolve('homebridge'));const hap=hr('hap-nodejs');const {PlatformAccessory}=require('homebridge/lib/platformAccessory');
 const C=hap.Characteristic;
 const config={remoteId:'ac',hubId:'hub',name:'Bedroom AC'};
 const remote={endpointId:'ac',description:{codeUrl:`https://example.invalid/?ircodeid=${TCL_PROFILE_ID}`}};

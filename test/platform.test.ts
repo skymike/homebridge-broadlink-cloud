@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BroadlinkCloudPlatform } from '../src/platform.ts';
-import { HomebridgeAPI } from 'homebridge/lib/api.js';
+import { HomebridgeAPI } from './homebridge-runtime.ts';
 import { TCL_PROFILE_ID } from '../src/tcl.ts';
 
 class Characteristic {

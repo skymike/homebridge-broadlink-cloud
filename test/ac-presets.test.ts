@@ -1,12 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRequire} from 'node:module';
+import {hap,PlatformAccessory} from './homebridge-runtime.ts';
 import {AcPresetCoordinator} from '../src/ac-presets.ts';
 import {encodeTcl,TCL_PROFILE_ID} from '../src/tcl.ts';
-const require=createRequire(import.meta.url);
-const homebridgeRequire=createRequire(require.resolve('homebridge'));
-const hap=homebridgeRequire('hap-nodejs');
-const {PlatformAccessory}=require('homebridge/lib/platformAccessory');
 const preset={id:'cool',name:'AC Cool 25',remoteId:'remote',hubId:'hub',power:true,temperature:25,mode:'cool',speed:'auto',swing:false};
 const remote={endpointId:'remote',description:{codeUrl:`https://example.invalid/code?ircodeid=${TCL_PROFILE_ID}`}};
 function setup(presets:any=[preset],send=async(_hub:any,_code:string)=>{}) {

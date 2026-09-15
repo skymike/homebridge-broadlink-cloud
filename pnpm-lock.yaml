@@ -12,8 +12,8 @@ importers:
         specifier: ^22.0.0
         version: 22.20.2
       homebridge:
-        specifier: ^1.11.0
-        version: 1.11.4(supports-color@7.2.0)
+        specifier: ^2.4.0
+        version: 2.4.0(supports-color@7.2.0)
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -28,15 +28,45 @@ packages:
     resolution: {integrity: sha512-PFOeWyXfH2eoM4o6Zmj9PzCUDlrrbtrbAJVzHYXpXK5rh/dz84Ygu79WHKK3DWW2/oXieYPV6up+i1izSPbc3g==}
     hasBin: true
 
+  '@homebridge/hap-nodejs@2.2.2':
+    resolution: {integrity: sha512-drTJSn63wGn5R6sDLmgjJdIW7G1awn1CxEEW1Jn+t3oCTMGSlk7lBZjGYbOpeL6acjiBqXNdo79NWcXn7s4CnQ==}
+    engines: {node: ^22 || ^24 || ^26}
+
   '@leichtgewicht/ip-codec@2.0.5':
     resolution: {integrity: sha512-Vo+PSpZG2/fmgmiNzYK9qWRh8h/CHrwD0mo1h1DzL4yzHNSfWYujGTYsWGreD000gcgmZ7K4Ys6Tx9TxtsKdDw==}
 
+  '@matter/general@0.17.9':
+    resolution: {integrity: sha512-NMAhD/EKpfTb1e0UllUJLdWgViw+Jp41PoY6s4yVGAiuo0sot6CYSdQauXelQPldhonrn2bLSKAa2mQUKWdhLQ==}
+
+  '@matter/main@0.17.9':
+    resolution: {integrity: sha512-YFBpU1AquN6sLC466xcOslAaERtlBnofHfuvDyY9B8UHZZJwFUfsDT7gMWVYkU5J/S9vc7lslL9TMvvns8Biaw==}
+
+  '@matter/model@0.17.9':
+    resolution: {integrity: sha512-NICGlK8ubD2an1eKIhEX2osZRl5JjnZE3Z8CJGnWItyVU5MbX1ta/EdCx/eBGy8WQPTxpYu93keW3L6qTUMOlg==}
+
+  '@matter/node@0.17.9':
+    resolution: {integrity: sha512-5AT6NYfIlLaILHAgVQoNZkuobff+CR7Ewkdj14YkENx77rRlujgDlDpXRiJkAHc+EUvRkwr5zA9ZL70XkwHkEw==}
+
+  '@matter/nodejs@0.17.9':
+    resolution: {integrity: sha512-2C3J89qeLyknLtbe/ls46dmjs/eN8LmMSKpGl90mC2ut8471z4rkpFYNE+MTJLFg8yzC+R86yi35Y3lBzioEwA==}
+    engines: {node: '>=20.19.0 <22.0.0 || >=22.13.0'}
+
+  '@matter/protocol@0.17.9':
+    resolution: {integrity: sha512-BZg1BWwm3rHsFxyQm17VjpTNO3kwd+AIjI9dtfnPFkH5CeS7r6Ebd/9j8L0zxeVPotciMcSW8H5W+3kCcuB2HQ==}
+
+  '@matter/types@0.17.9':
+    resolution: {integrity: sha512-Tdb08WzfM2Ma962NTtNrHTA3S26eBGCj5/kpnpl9LS5Twpw78Rgk/jogOIM/HDVCbu/M/ZSQPmdBN/q3vWEXAw==}
+
+  '@noble/curves@2.4.0':
+    resolution: {integrity: sha512-P4/62zrgfH33CneE3Dn4WhJVA22YUU0eR51wKIan4NVRvwsA0YnPTwWGpNbpuacSujmSFLvyzpyuR30+fbq2Ew==}
+    engines: {node: '>= 20.19.0'}
+
+  '@noble/hashes@2.4.0':
+    resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
+    engines: {node: '>= 20.19.0'}
+
   '@types/node@22.20.2':
     resolution: {integrity: sha512-xlvWf4Vs9n1PEVYwP1n4vvG07M6y8WgvJ2t0vbrWTmijsIHp1cS+uJ2kMIRdY3nHZK0nCYKrPeD171+SzF4/zw==}
-
-  ansi-styles@4.3.0:
-    resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
-    engines: {node: '>=8'}
 
   bonjour-hap@3.10.5:
     resolution: {integrity: sha512-8E81oIQF0pjlDNVAKcAGwPYYG9BKD42Q8Fi7eJ/vYxEwyL/M8YpjM4gnFC1QTmagWI3jzbw7jPI0q2C1qWfQLQ==}
@@ -44,20 +74,13 @@ packages:
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
 
-  chalk@4.1.2:
-    resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
-    engines: {node: '>=10'}
+  chalk@6.0.0:
+    resolution: {integrity: sha512-2uNTXIuTTxk7ciZgAU1BQcgnchcG0xXnrs6jzkQfj9SsRa9M2s5zE8WT96hS6KmG4MzWHSrvH43DF1m4XRkrFg==}
+    engines: {node: '>=22'}
 
-  color-convert@2.0.1:
-    resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
-    engines: {node: '>=7.0.0'}
-
-  color-name@1.1.4:
-    resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
-
-  commander@13.1.0:
-    resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
-    engines: {node: '>=18'}
+  commander@15.0.0:
+    resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
+    engines: {node: '>=22.12.0'}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -88,8 +111,8 @@ packages:
   from@0.1.7:
     resolution: {integrity: sha512-twe20eF1OxVxp/ML/kq2p1uc6KvFK/+vs8WjEbeKmV2He22MKm7YF2ANIt+EOqhJ5L3K/SuuPhk0hWQDjOM23g==}
 
-  fs-extra@11.3.4:
-    resolution: {integrity: sha512-CTXd6rk/M3/ULNQj8FBqBWHYBVYybQ3VPBw0xGKFe3tuH7ytT6ACnvzpIQ3UZtB8yvUKC2cXn1a+x+5EVQLovA==}
+  fs-extra@11.4.0:
+    resolution: {integrity: sha512-EQsFzMUJkCKGr1ePqlYADkIUmHW1s3ZXr5Yqy6wbGrfUCphpl2maM/kyOIRA2HpP3AaFQTZXD4ldjek+nccddA==}
     engines: {node: '>=14.14'}
 
   futoin-hkdf@1.5.3:
@@ -98,10 +121,6 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
-
-  hap-nodejs@0.14.3:
-    resolution: {integrity: sha512-kl7z4r84WN/bjQmO2OA8+RefPVtPQw6k2hs7/q1+ROghE9G6C5f/yNenR7/yYnZLfXMXQfY4yLiYY5uLCKXT1w==}
-    engines: {node: ^18 || ^20 || ^22 || ^24}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -112,9 +131,9 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
-  homebridge@1.11.4:
-    resolution: {integrity: sha512-8rffC5N+vG/AaZwWwKB30m4pDauFVM1zRauY4mPk5dTpRv8+4QLC8dG7arLe6mW+i5UM8Q5lUeNyBdSjrIukkA==}
-    engines: {node: ^18.15.0 || ^20.7.0 || ^22 || ^24}
+  homebridge@2.4.0:
+    resolution: {integrity: sha512-yAc/jGC04h6LqcZTiO6aubzKmCulWGIdYUx3lj8r/aJQbAL5EZta9aX71LWnko3bChhTaD7sS7LLJ5Hqu4DbVA==}
+    engines: {node: ^22 || ^24 || ^26}
     hasBin: true
 
   jsonfile@6.2.1:
@@ -129,10 +148,6 @@ packages:
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
 
-  mkdirp@0.5.6:
-    resolution: {integrity: sha512-FP+p8RB8OWpF3YZBCrP5gtADmtXApB5AMLn+vdyA+PyxCjrCs00mjyUozssO33cwDeT3wNGdLxJ5M//YqtHAJw==}
-    hasBin: true
-
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
@@ -143,19 +158,8 @@ packages:
     resolution: {integrity: sha512-2eznPJP8z2BFLX50tf0LuODrpINqP1RVIm/CObbTcBRITQgmC/TjcREF1NeTBzIcR5XO/ukWo+YHOjBbFwIupg==}
     hasBin: true
 
-  node-persist@0.0.12:
-    resolution: {integrity: sha512-Fbia3FYnURzaql53wLu0t19dmAwQg/tXT6O7YPmdwNwysNKEyFmgoT2BQlPD3XXQnYeiQVNvR5lfvufGwKuxhg==}
-
   pause-stream@0.0.11:
     resolution: {integrity: sha512-e3FBlXLmN/D1S+zHzanP4E/4Z60oFAa3O051qt1pxa7DEJWKAyil6upYVXCWadEnuoqa4Pkc9oUx9zsxYeRv8A==}
-
-  q@1.1.2:
-    resolution: {integrity: sha512-ROtylwux7Vkc4C07oKE/ReigUmb33kVoLtcR4SJ1QVqwaZkBEDL3vX4/kwFzIERQ5PfCl0XafbU8u2YUhyGgVA==}
-    engines: {node: '>=0.6.0', teleport: '>=0.2.0'}
-    deprecated: |-
-      You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
-      (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode-terminal@0.12.0:
     resolution: {integrity: sha512-EXtzRZmC+YGmGlDFbXKxQiMZNwCLEO6BANKXG4iCtSIM0yqc/pappSx3RIKr4r0uh5JsBckOXeKrB3Iz7mdQpQ==}
@@ -168,8 +172,8 @@ packages:
     resolution: {integrity: sha512-42tBVwLWnaQvW5zc4HbZrTuWccECCZfBi92FDuwtqxasH+JbPB3/FOKb1m222K42R4WxuxzzMsTswfzgtSu64Q==}
     engines: {node: '>=11.0.0'}
 
-  semver@7.7.4:
-    resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -242,15 +246,75 @@ snapshots:
       safe-buffer: 5.2.1
       xml2js: 0.6.2
 
+  '@homebridge/hap-nodejs@2.2.2(supports-color@7.2.0)':
+    dependencies:
+      '@homebridge/ciao': 1.3.12(supports-color@7.2.0)
+      '@homebridge/dbus-native': 0.7.9
+      bonjour-hap: 3.10.5
+      debug: 4.4.3(supports-color@7.2.0)
+      fast-srp-hap: 2.0.4
+      futoin-hkdf: 1.5.3
+      source-map-support: 0.5.21
+      tslib: 2.8.1
+      tweetnacl: 1.0.3
+    transitivePeerDependencies:
+      - supports-color
+
   '@leichtgewicht/ip-codec@2.0.5': {}
+
+  '@matter/general@0.17.9':
+    dependencies:
+      '@noble/curves': 2.4.0
+
+  '@matter/main@0.17.9':
+    dependencies:
+      '@matter/general': 0.17.9
+      '@matter/model': 0.17.9
+      '@matter/node': 0.17.9
+      '@matter/protocol': 0.17.9
+      '@matter/types': 0.17.9
+    optionalDependencies:
+      '@matter/nodejs': 0.17.9
+
+  '@matter/model@0.17.9':
+    dependencies:
+      '@matter/general': 0.17.9
+
+  '@matter/node@0.17.9':
+    dependencies:
+      '@matter/general': 0.17.9
+      '@matter/model': 0.17.9
+      '@matter/protocol': 0.17.9
+      '@matter/types': 0.17.9
+
+  '@matter/nodejs@0.17.9':
+    dependencies:
+      '@matter/general': 0.17.9
+      '@matter/node': 0.17.9
+      '@matter/protocol': 0.17.9
+      '@matter/types': 0.17.9
+    optional: true
+
+  '@matter/protocol@0.17.9':
+    dependencies:
+      '@matter/general': 0.17.9
+      '@matter/model': 0.17.9
+      '@matter/types': 0.17.9
+
+  '@matter/types@0.17.9':
+    dependencies:
+      '@matter/general': 0.17.9
+      '@matter/model': 0.17.9
+
+  '@noble/curves@2.4.0':
+    dependencies:
+      '@noble/hashes': 2.4.0
+
+  '@noble/hashes@2.4.0': {}
 
   '@types/node@22.20.2':
     dependencies:
       undici-types: 6.21.0
-
-  ansi-styles@4.3.0:
-    dependencies:
-      color-convert: 2.0.1
 
   bonjour-hap@3.10.5:
     dependencies:
@@ -260,18 +324,9 @@ snapshots:
 
   buffer-from@1.1.2: {}
 
-  chalk@4.1.2:
-    dependencies:
-      ansi-styles: 4.3.0
-      supports-color: 7.2.0
+  chalk@6.0.0: {}
 
-  color-convert@2.0.1:
-    dependencies:
-      color-name: 1.1.4
-
-  color-name@1.1.4: {}
-
-  commander@13.1.0: {}
+  commander@15.0.0: {}
 
   debug@4.4.3(supports-color@7.2.0):
     dependencies:
@@ -301,7 +356,7 @@ snapshots:
 
   from@0.1.7: {}
 
-  fs-extra@11.3.4:
+  fs-extra@11.4.0:
     dependencies:
       graceful-fs: 4.2.11
       jsonfile: 6.2.1
@@ -311,33 +366,20 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  hap-nodejs@0.14.3(supports-color@7.2.0):
-    dependencies:
-      '@homebridge/ciao': 1.3.12(supports-color@7.2.0)
-      '@homebridge/dbus-native': 0.7.9
-      bonjour-hap: 3.10.5
-      debug: 4.4.3(supports-color@7.2.0)
-      fast-srp-hap: 2.0.4
-      futoin-hkdf: 1.5.3
-      node-persist: 0.0.12
-      source-map-support: 0.5.21
-      tslib: 2.8.1
-      tweetnacl: 1.0.3
-    transitivePeerDependencies:
-      - supports-color
-
-  has-flag@4.0.0: {}
+  has-flag@4.0.0:
+    optional: true
 
   hexy@0.4.0: {}
 
-  homebridge@1.11.4(supports-color@7.2.0):
+  homebridge@2.4.0(supports-color@7.2.0):
     dependencies:
-      chalk: 4.1.2
-      commander: 13.1.0
-      fs-extra: 11.3.4
-      hap-nodejs: 0.14.3(supports-color@7.2.0)
+      '@homebridge/hap-nodejs': 2.2.2(supports-color@7.2.0)
+      '@matter/main': 0.17.9
+      chalk: 6.0.0
+      commander: 15.0.0
+      fs-extra: 11.4.0
       qrcode-terminal: 0.12.0
-      semver: 7.7.4
+      semver: 7.8.5
       source-map-support: 0.5.21
     transitivePeerDependencies:
       - supports-color
@@ -354,10 +396,6 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  mkdirp@0.5.6:
-    dependencies:
-      minimist: 1.2.8
-
   ms@2.1.3: {}
 
   multicast-dns-service-types@1.1.0: {}
@@ -367,16 +405,9 @@ snapshots:
       dns-packet: 5.6.1
       thunky: 1.1.0
 
-  node-persist@0.0.12:
-    dependencies:
-      mkdirp: 0.5.6
-      q: 1.1.2
-
   pause-stream@0.0.11:
     dependencies:
       through: 2.3.8
-
-  q@1.1.2: {}
 
   qrcode-terminal@0.12.0: {}
 
@@ -384,7 +415,7 @@ snapshots:
 
   sax@1.6.1: {}
 
-  semver@7.7.4: {}
+  semver@7.8.5: {}
 
   source-map-support@0.5.21:
     dependencies:
@@ -405,6 +436,7 @@ snapshots:
   supports-color@7.2.0:
     dependencies:
       has-flag: 4.0.0
+    optional: true
 
   through@2.3.8: {}
 

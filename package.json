@@ -5,13 +5,37 @@
   "type": "module",
   "description": "Homebridge platform for BroadLink cloud fans, TCL AC and RM MAX room sensors",
   "license": "UNLICENSED",
-  "keywords": ["homebridge-plugin", "broadlink", "fan"],
+  "keywords": [
+    "homebridge-plugin",
+    "broadlink",
+    "fan"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist/", "config.schema.json", "README.md"],
-  "engines": { "node": ">=22.18.0", "homebridge": "^1.8.0 || ^2.0.0" },
-  "scripts": { "test": "node --test test/*.test.ts", "build": "tsc -p tsconfig.json", "check": "tsc -p tsconfig.json --noEmit" },
-  "peerDependencies": {"homebridge": "^1.8.0 || ^2.0.0"},
-  "devDependencies": {"typescript": "^5.9.0", "@types/node": "^22.0.0", "homebridge": "^1.11.0"},
-  "repository": {"type":"git","url":"https://github.com/skymike/homebridge-broadlink-cloud.git"}
+  "files": [
+    "dist/",
+    "config.schema.json",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.18.0",
+    "homebridge": "^1.8.0 || ^2.0.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "homebridge": "^1.8.0 || ^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "homebridge": "^2.4.0",
+    "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skymike/homebridge-broadlink-cloud.git"
+  }
 }
