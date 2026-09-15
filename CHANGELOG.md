@@ -1,5 +1,9 @@
 # Release notes
 
+## 0.3.2 — 2026-09-16
+
+Documentation-only update: adds a GitHub repository badge and the improved BroadLink app logo to the npm README. Runtime behavior is unchanged.
+
 ## 0.3.1 — 2026-09-16
 
 First public release. Adds the MIT license, public package metadata and documentation. Runtime behavior is unchanged from 0.3.0.
