@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/skymike/homebridge-broadlink-cloud/main/assets/broadlink-app.jpg" alt="BroadLink international app logo" width="120" height="113">
+</p>
+
 # Homebridge BroadLink Cloud
 
 Control BroadLink RM MAX remotes from Apple Home through the BroadLink cloud.
@@ -118,3 +122,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 ## License
 
 Copyright © 2026 skymike. Released under the [MIT License](LICENSE).
+
+The BroadLink app logo is a trademark of its respective owner and is used for identification. It is not covered by this project’s MIT license.
