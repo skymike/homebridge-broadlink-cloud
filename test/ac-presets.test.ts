@@ -70,3 +70,12 @@ test('shutdown while send resolves still resets real HAP committed value',async(
  let release!:()=>void;const f=setup(undefined,async()=>{await new Promise<void>(r=>{release=r;});});await f.refresh();const c=on(f.accessories[0]);
  const pending=c.handleSetRequest(true);await new Promise(setImmediate);f.coordinator.shutdown();release();await pending;await new Promise(setImmediate);assert.equal(c.value,false);
 });
+
+test('Homebridge settings empty preset boolean row is ignored without device reads or writes',async()=>{
+ const f=setup([{power:false,swing:false}]);
+ f.client.getRemote=async()=>{assert.fail('empty preset must not query devices');};
+ await f.refresh();assert.equal(f.accessories.length,0);f.coordinator.shutdown();
+ for(const extra of [{id:'unfinished'},{power:true},{swing:true},{temperature:25}]) {
+  assert.throws(()=>setup([{power:false,swing:false,...extra}]));
+ }
+});

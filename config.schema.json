@@ -19,7 +19,7 @@
         }
       },
       "acPresets": {
-        "type":"array", "title":"Optional momentary TCL presets", "items": {
+        "type":"array", "title":"Optional momentary TCL presets", "minItems":0, "default":[], "items": {
           "type":"object", "properties": {
             "id":{"type":"string","required":true},
             "name":{"type":"string","required":true},

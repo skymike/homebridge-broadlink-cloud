@@ -24,7 +24,11 @@ export class AcPresetCoordinator {
     this.log=log;this.api=api;
     if (presets===undefined) presets=[];
     if (!Array.isArray(presets)) throw new Error('acPresets must be an array');
-    this.configs=presets.map(value=>{
+    // Homebridge's settings form can save an untouched optional row with only
+    // its unchecked booleans. Ignore that exact placeholder, not partial presets.
+    this.configs=presets.filter(value=>!(value && typeof value==='object'
+      && !Array.isArray(value) && value.power===false && value.swing===false
+      && Object.keys(value).every(key=>key==='power'||key==='swing'))).map(value=>{
       if (!value || typeof value!=='object' || Array.isArray(value)
           || !['id','name','remoteId','hubId'].every(key=>identifier(value[key]))) throw new Error('Each AC preset requires explicit id, name, remoteId and hubId');
       try {encodeTcl({...value,key:0});} catch {throw new Error('Each AC preset requires valid complete TCL power, temperature, mode, speed and swing');}
