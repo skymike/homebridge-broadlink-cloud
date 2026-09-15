@@ -14,6 +14,7 @@ interface Runtime {
   config:AcThermostatConfig;accessory:PlatformAccessory;thermostat:Service;humidity:Service;
   available:boolean;hub?:Endpoint;sender?:Sender;reading?:AcRoomReading;
   target:number;displayUnits:number;targetMode?:number;lastIrMode:TclState['mode'];queue:Promise<void>;
+  speed:TclState['speed'];swing:boolean;specialMode?:'dry'|'fan';controls:Map<string,Service>;
 }
 const identifier=(v:unknown):v is string=>typeof v==='string'&&v.trim().length>0&&v===v.trim()&&!/[\x00-\x1f\x7f]/.test(v);
 const tenth=(v:number):number=>Math.round(v*10)/10;
@@ -51,7 +52,7 @@ export class AcThermostatCoordinator {
     else {
       const C=this.api.hap.Characteristic;
       for(const service of accessory.services) {
-        for(const type of [C.CurrentTemperature,C.CurrentRelativeHumidity,C.TargetTemperature,C.TargetHeatingCoolingState,C.CurrentHeatingCoolingState]) {
+        for(const type of [C.CurrentTemperature,C.CurrentRelativeHumidity,C.TargetTemperature,C.TargetHeatingCoolingState,C.CurrentHeatingCoolingState,C.On]) {
           if(!service.testCharacteristic(type))continue;
           service.getCharacteristic(type).onGet(()=>{throw this.failure();}).onSet(async()=>{throw this.failure();}).updateValue(this.failure());
         }
@@ -121,8 +122,9 @@ export class AcThermostatCoordinator {
     return sample;
   }
   private commandedMode(runtime:Runtime):number {
-    if(this.stopped||!runtime.available||runtime.targetMode===undefined)throw this.failure();
-    return runtime.targetMode;
+    if(this.stopped||!runtime.available)throw this.failure();
+    // A reachable IR appliance with unknown power is still controllable.
+    return runtime.targetMode??0;
   }
   private currentDemand(runtime:Runtime):number {
     const mode=this.commandedMode(runtime);
@@ -136,7 +138,7 @@ export class AcThermostatCoordinator {
     const {Service:S,Characteristic:C}=this.api.hap;
     const thermostat=accessory.getService(S.Thermostat)??accessory.addService(S.Thermostat,config.name??'TCL AC');
     const humidity=accessory.getService(S.HumiditySensor)??accessory.addService(S.HumiditySensor,'Room Humidity');
-    const runtime:Runtime={config,accessory,thermostat,humidity,available:false,target:25,displayUnits:0,lastIrMode:'cool',queue:Promise.resolve()};
+    const runtime:Runtime={config,accessory,thermostat,humidity,available:false,target:25,displayUnits:0,lastIrMode:'cool',queue:Promise.resolve(),speed:'auto',swing:false,controls:new Map()};
     this.runtimes.set(config.remoteId,runtime);
     accessory.getService(S.AccessoryInformation)?.setCharacteristic(C.Manufacturer,'TCL').setCharacteristic(C.Model,'GYKQ-03_1014 with RM MAX room sensor');
     thermostat.getCharacteristic(C.CurrentTemperature).setProps({minValue:-40,maxValue:100,minStep:0.1}).onGet(()=>tenth(this.sample(runtime).temperature));
@@ -151,18 +153,49 @@ export class AcThermostatCoordinator {
     });
     thermostat.getCharacteristic(C.CurrentHeatingCoolingState).onGet(()=>this.currentDemand(runtime));
     thermostat.getCharacteristic(C.TemperatureDisplayUnits).onGet(()=>runtime.displayUnits).onSet(async value=>{if(value!==0&&value!==1)throw this.invalid();runtime.displayUnits=value;});
+    const addControl=(id:string,label:string)=>{
+      const service=accessory.getServiceById(S.Switch,'ac-'+id)??accessory.addService(S.Switch,label,'ac-'+id);
+      if(!service.testCharacteristic(C.ConfiguredName))service.addOptionalCharacteristic(C.ConfiguredName);
+      service.setCharacteristic(C.ConfiguredName,label);
+      runtime.controls.set(id,service);
+      service.getCharacteristic(C.On).onGet(()=>this.controlValue(runtime,id)).onSet(async value=>{
+        if(typeof value!=='boolean')throw this.invalid();
+        if(id.startsWith('speed-'))await this.command(runtime,value?{speed:id.slice(6) as TclState['speed']}:{});
+        else if(id==='swing')await this.command(runtime,{swing:value});
+        else await this.command(runtime,value?{specialMode:id as 'dry'|'fan'}:{disableSpecial:id as 'dry'|'fan'});
+      });
+    };
+    for(const [speed,label] of [['auto','Auto'],['low','Low'],['medium','Medium'],['high','High']])addControl('speed-'+speed,'AC Fan '+label);
+    addControl('swing','AC Swing');addControl('dry','AC Dry');addControl('fan','AC Fan Only');
     this.publish(runtime);
     return runtime;
   }
-  private async command(runtime:Runtime,change:{target?:number;mode?:number}):Promise<void> {
+  private controlValue(runtime:Runtime,id:string):boolean {
+    if(this.stopped||!runtime.available)throw this.failure();
+    if(id.startsWith('speed-'))return runtime.speed===id.slice(6);
+    if(id==='swing')return runtime.swing;
+    return runtime.specialMode===id;
+  }
+  private async command(runtime:Runtime,change:{target?:number;mode?:number;speed?:TclState['speed'];swing?:boolean;specialMode?:'dry'|'fan';disableSpecial?:'dry'|'fan'}):Promise<void> {
     const operation=runtime.queue.then(async()=>{
       if(this.stopped||!runtime.available||!runtime.hub||!runtime.sender)throw this.failure();
       if(change.target!==undefined&&runtime.targetMode===undefined)throw this.failure();
+      if(Object.keys(change).length===0)return;
+      if(change.disableSpecial&&runtime.specialMode!==change.disableSpecial)return;
       const target=change.target??runtime.target;
-      const mode=change.mode??runtime.targetMode??2;
-      const irMode=mode===0?runtime.lastIrMode:mode===1?'heat':mode===2?'cool':'auto';
-      await runtime.sender.sendCode(runtime.hub,encodeTcl({power:mode!==0,mode:irMode,temperature:target,speed:'auto',swing:false,key:0}));
+      const specialMode=change.specialMode??(change.mode!==undefined||change.disableSpecial?undefined:runtime.specialMode);
+      // Thermostat has no Dry/Fan values. Its thermal mode is Off while the
+      // corresponding grouped switch shows the active special mode.
+      const mode=change.specialMode||change.disableSpecial?0:change.mode??runtime.targetMode;
+      const irMode=specialMode??(mode===undefined||mode===0?runtime.lastIrMode:mode===1?'heat':mode===2?'cool':'auto');
+      const speed=change.speed??runtime.speed;const swing=change.swing??runtime.swing;
+      const power=specialMode!==undefined||(mode!==undefined&&mode!==0);
+      // Speed/swing selections made while off or unknown prepare the next
+      // command without unexpectedly powering the appliance on or off.
+      const settingsOnly=change.mode===undefined&&change.specialMode===undefined&&change.disableSpecial===undefined;
+      if(power||!settingsOnly)await runtime.sender.sendCode(runtime.hub,encodeTcl({power,mode:irMode,temperature:target,speed,swing,key:0}));
       runtime.target=target;runtime.targetMode=mode;runtime.lastIrMode=irMode;
+      runtime.speed=speed;runtime.swing=swing;runtime.specialMode=specialMode;
     });
     runtime.queue=operation.catch(()=>{});
     try{await operation;}catch{
@@ -184,5 +217,9 @@ export class AcThermostatCoordinator {
     runtime.thermostat.updateCharacteristic(C.TargetTemperature,runtime.target);
     runtime.thermostat.getCharacteristic(C.TargetHeatingCoolingState).updateValue(safely(()=>this.commandedMode(runtime)));
     runtime.thermostat.getCharacteristic(C.CurrentHeatingCoolingState).updateValue(safely(()=>this.currentDemand(runtime)));
+    for(const [id,service] of runtime.controls){
+      let value:boolean|Error;try{value=this.controlValue(runtime,id);}catch{value=this.failure();}
+      service.getCharacteristic(C.On).updateValue(value);
+    }
   }
 }

@@ -19,13 +19,13 @@ function setup(send=async(_hub:any,_code:string)=>{},configs:any=[config]) {
 const char=(f:any,key:any)=>f.accessories[0].getService(hap.Service.Thermostat).getCharacteristic(key);
 const failure=(e:any)=>e===hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE;
 
-test('real room sensor readings, default target and unknown command state; discovery sends nothing',async()=>{
+test('real room readings and reachable startup display; discovery sends nothing',async()=>{
  let sends=0;const f=setup(async()=>{sends++;});await f.refresh();assert.equal(sends,0);
  assert.ok(Math.abs(await char(f,C.CurrentTemperature).handleGetRequest()-27.1)<0.000001);
  const humidity=f.accessories[0].getService(hap.Service.HumiditySensor).getCharacteristic(C.CurrentRelativeHumidity);assert.ok(Math.abs(await humidity.handleGetRequest()-46.8)<0.000001);
  assert.equal(await char(f,C.TargetTemperature).handleGetRequest(),25);
- await assert.rejects(char(f,C.TargetHeatingCoolingState).handleGetRequest(),failure);
- await assert.rejects(char(f,C.CurrentHeatingCoolingState).handleGetRequest(),failure);
+ assert.equal(await char(f,C.TargetHeatingCoolingState).handleGetRequest(),0);
+ assert.equal(await char(f,C.CurrentHeatingCoolingState).handleGetRequest(),0);
  assert.equal(char(f,C.TargetTemperature).props.minValue,16);assert.equal(char(f,C.TargetTemperature).props.maxValue,30);assert.equal(char(f,C.TargetTemperature).props.minStep,1);f.coordinator.shutdown();
 });
 test('acknowledged mode and temperature controls send exact full state and estimate HVAC demand',async()=>{
@@ -82,4 +82,58 @@ test('in-flight command settling after shutdown does not publish deferred sensor
  const update=t.mock.method(char(f,C.CurrentTemperature),'updateValue');
  release();await pending;await new Promise(setImmediate);
  assert.equal(update.mock.callCount(),0);
+});
+
+const extra=(f:any,id:string)=>f.accessories[0].getServiceById(hap.Service.Switch,'ac-'+id).getCharacteristic(C.On);
+test('AC grouped speed and swing preserve full state through thermostat writes',async()=>{
+ const sent:string[]=[];const f=setup(async(_h,code)=>{sent.push(code);});await f.refresh();
+ await extra(f,'speed-low').handleSetRequest(true);await extra(f,'swing').handleSetRequest(true);
+ assert.equal(sent.length,0,'settings while power unknown must not operate AC');
+ await char(f,C.TargetHeatingCoolingState).handleSetRequest(2);
+ await char(f,C.TargetTemperature).handleSetRequest(23);
+ assert.equal(sent.at(-1),encodeTcl({power:true,mode:'cool',temperature:23,speed:'low',swing:true,key:0}));
+ await extra(f,'speed-high').handleSetRequest(true);await new Promise(setImmediate);
+ assert.equal(await extra(f,'speed-low').handleGetRequest(),false);assert.equal(await extra(f,'speed-high').handleGetRequest(),true);
+ await extra(f,'speed-high').handleSetRequest(false);await new Promise(setImmediate);
+ assert.equal(await extra(f,'speed-high').handleGetRequest(),true,'speed selectors cannot clear selected value');
+ assert.equal(sent.length,3);f.coordinator.shutdown();
+});
+test('Dry and Fan-only share exclusive modes and preserve speed swing and target',async()=>{
+ const sent:string[]=[];const f=setup(async(_h,code)=>{sent.push(code);});await f.refresh();
+ await extra(f,'speed-medium').handleSetRequest(true);await extra(f,'swing').handleSetRequest(true);
+ await extra(f,'dry').handleSetRequest(true);await char(f,C.TargetTemperature).handleSetRequest(24);
+ assert.equal(sent.at(-1),encodeTcl({power:true,mode:'dry',temperature:24,speed:'medium',swing:true,key:0}));
+ await extra(f,'fan').handleSetRequest(true);await extra(f,'dry').handleSetRequest(false);
+ assert.equal(sent.length,3,'turning off an inactive mode cannot stop another mode');
+ assert.equal(await extra(f,'dry').handleGetRequest(),false);assert.equal(await extra(f,'fan').handleGetRequest(),true);
+ await char(f,C.TargetHeatingCoolingState).handleSetRequest(1);
+ assert.equal(await extra(f,'fan').handleGetRequest(),false);
+ assert.equal(sent.at(-1),encodeTcl({power:true,mode:'heat',temperature:24,speed:'medium',swing:true,key:0}));
+ await extra(f,'dry').handleSetRequest(true);await extra(f,'dry').handleSetRequest(false);
+ assert.equal(sent.at(-1),encodeTcl({power:false,mode:'dry',temperature:24,speed:'medium',swing:true,key:0}));f.coordinator.shutdown();
+});
+test('extra controls roll back failed writes and fail on lost discovery',async()=>{
+ let fail=false;let sends=0;const f=setup(async()=>{sends++;if(fail)throw Error('PRIVATE');});await f.refresh();
+ await char(f,C.TargetHeatingCoolingState).handleSetRequest(2);fail=true;
+ await assert.rejects(extra(f,'speed-high').handleSetRequest(true),failure);await new Promise(setImmediate);
+ assert.equal(await extra(f,'speed-auto').handleGetRequest(),true);assert.equal(await extra(f,'speed-high').handleGetRequest(),false);assert.equal(sends,2);
+ f.coordinator.unavailable();await assert.rejects(extra(f,'swing').handleGetRequest(),failure);await assert.rejects(extra(f,'dry').handleSetRequest(true),failure);assert.equal(sends,2);f.coordinator.shutdown();
+});
+test('cached AC migration reuses all grouped controls and sends nothing',async()=>{
+ const f=setup();await f.refresh();const a=f.accessories[0];const n=a.services.length;
+ const next=setup();next.coordinator.configureAccessory(a);await next.refresh();
+ assert.equal(a.services.length,n);assert.equal(next.accessories.length,0);assert.equal(a.services.filter((s:any)=>s.UUID===hap.Service.Switch.UUID).length,7);
+ f.coordinator.shutdown();next.coordinator.shutdown();
+});
+
+test('concurrent grouped writes compose acknowledged state and shutdown blocks later changes',async()=>{
+ const sent:string[]=[];let release!:()=>void;let delay=false;
+ const f=setup(async(_h,code)=>{sent.push(code);if(delay){delay=false;await new Promise<void>(r=>{release=r;});}});await f.refresh();
+ await char(f,C.TargetHeatingCoolingState).handleSetRequest(2);delay=true;
+ const speed=extra(f,'speed-high').handleSetRequest(true);const swing=extra(f,'swing').handleSetRequest(true);
+ await new Promise(setImmediate);assert.equal(sent.length,2);release();await Promise.all([speed,swing]);
+ assert.equal(sent[2],encodeTcl({power:true,mode:'cool',temperature:25,speed:'high',swing:true,key:0}));
+ await extra(f,'speed-auto').handleSetRequest(true);await extra(f,'swing').handleSetRequest(false);
+ assert.equal(sent.at(-1),encodeTcl({power:true,mode:'cool',temperature:25,speed:'auto',swing:false,key:0}));
+ f.coordinator.shutdown();await assert.rejects(extra(f,'speed-low').handleSetRequest(true),failure);assert.equal(sent.length,5);
 });

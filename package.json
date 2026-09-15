@@ -1,6 +1,6 @@
 {
   "name": "homebridge-broadlink-cloud",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Homebridge platform for BroadLink cloud fans, TCL AC and RM MAX room sensors",
