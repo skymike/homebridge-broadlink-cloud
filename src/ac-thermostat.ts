@@ -14,7 +14,7 @@ interface Runtime {
   config:AcThermostatConfig;accessory:PlatformAccessory;thermostat:Service;humidity:Service;
   available:boolean;hub?:Endpoint;sender?:Sender;reading?:AcRoomReading;
   target:number;displayUnits:number;targetMode?:number;lastIrMode:TclState['mode'];queue:Promise<void>;
-  speed:TclState['speed'];swing:boolean;specialMode?:'dry'|'fan';controls:Map<string,Service>;
+  speed:TclState['speed'];swing:boolean;specialMode?:'dry'|'fan';controls:Map<string,Service>;needsPersist:boolean;
 }
 const identifier=(v:unknown):v is string=>typeof v==='string'&&v.trim().length>0&&v===v.trim()&&!/[\x00-\x1f\x7f]/.test(v);
 const tenth=(v:number):number=>Math.round(v*10)/10;
@@ -96,6 +96,7 @@ export class AcThermostatCoordinator {
           this.log.warn('AC room sensor unavailable; measured values will report unavailable.');
         }
         this.publish(runtime);
+        if(runtime.needsPersist){this.api.updatePlatformAccessories([runtime.accessory]);runtime.needsPersist=false;}
       } catch {
         if(this.stopped||revision!==this.revision)return;
         const runtime=this.runtimes.get(config.remoteId);
@@ -138,7 +139,7 @@ export class AcThermostatCoordinator {
     const {Service:S,Characteristic:C}=this.api.hap;
     const thermostat=accessory.getService(S.Thermostat)??accessory.addService(S.Thermostat,config.name??'TCL AC');
     const humidity=accessory.getService(S.HumiditySensor)??accessory.addService(S.HumiditySensor,'Room Humidity');
-    const runtime:Runtime={config,accessory,thermostat,humidity,available:false,target:25,displayUnits:0,lastIrMode:'cool',queue:Promise.resolve(),speed:'auto',swing:false,controls:new Map()};
+    const runtime:Runtime={config,accessory,thermostat,humidity,available:false,target:25,displayUnits:0,lastIrMode:'cool',queue:Promise.resolve(),speed:'auto',swing:false,controls:new Map(),needsPersist:true};
     this.runtimes.set(config.remoteId,runtime);
     accessory.getService(S.AccessoryInformation)?.setCharacteristic(C.Manufacturer,'TCL').setCharacteristic(C.Model,'GYKQ-03_1014 with RM MAX room sensor');
     thermostat.getCharacteristic(C.CurrentTemperature).setProps({minValue:-40,maxValue:100,minStep:0.1}).onGet(()=>tenth(this.sample(runtime).temperature));

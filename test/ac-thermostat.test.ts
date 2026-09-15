@@ -7,14 +7,14 @@ const C=hap.Characteristic;
 const config={remoteId:'ac',hubId:'hub',name:'Bedroom AC'};
 const remote={endpointId:'ac',description:{codeUrl:`https://example.invalid/?ircodeid=${TCL_PROFILE_ID}`}};
 function setup(send=async(_hub:any,_code:string)=>{},configs:any=[config]) {
- const accessories:any[]=[];const logs:string[]=[];
+ const accessories:any[]=[];const logs:string[]=[];const saved:any[]=[];
  class Accessory extends PlatformAccessory {registered=false;addService(...args:any[]){assert.ok(this.registered);return super.addService(...args);}}
- const api:any={hap,platformAccessory:Accessory,registerPlatformAccessories(_p:any,_n:any,list:any[]){for(const a of list){a.registered=true;accessories.push(a);}},unregisterPlatformAccessories(){assert.fail('retain cache');}};
+ const api:any={hap,platformAccessory:Accessory,registerPlatformAccessories(_p:any,_n:any,list:any[]){for(const a of list){a.registered=true;accessories.push(a);}},updatePlatformAccessories(list:any[]){saved.push(...list.map(a=>({services:a.services.length})));},unregisterPlatformAccessories(){assert.fail('retain cache');}};
  const coordinator=new AcThermostatCoordinator({warn:(m:string)=>logs.push(m)} as any,configs,api);
  const client:any={getRemote:async()=>remote};const sender={sendCode:send};
  const sensors:any={read:async()=>({temperature:27.13,humidity:46.77,observedAt:Date.now()})};
  const refresh=()=>coordinator.refresh([{endpointId:'hub'}],client,sender,sensors);
- return{accessories,logs,api,coordinator,client,sender,sensors,refresh};
+ return{accessories,logs,saved,api,coordinator,client,sender,sensors,refresh};
 }
 const char=(f:any,key:any)=>f.accessories[0].getService(hap.Service.Thermostat).getCharacteristic(key);
 const failure=(e:any)=>e===hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE;
@@ -122,7 +122,7 @@ test('extra controls roll back failed writes and fail on lost discovery',async()
 test('cached AC migration reuses all grouped controls and sends nothing',async()=>{
  const f=setup();await f.refresh();const a=f.accessories[0];const n=a.services.length;
  const next=setup();next.coordinator.configureAccessory(a);await next.refresh();
- assert.equal(a.services.length,n);assert.equal(next.accessories.length,0);assert.equal(a.services.filter((s:any)=>s.UUID===hap.Service.Switch.UUID).length,7);
+ assert.equal(a.services.length,n);assert.equal(next.accessories.length,0);assert.deepEqual(next.saved,[{services:n}]);assert.equal(a.services.filter((s:any)=>s.UUID===hap.Service.Switch.UUID).length,7);
  f.coordinator.shutdown();next.coordinator.shutdown();
 });
 
