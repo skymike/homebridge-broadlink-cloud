@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/skymike/homebridge-broadlink-cloud/main/assets/broadlink-app.jpg" alt="BroadLink international app logo" width="120" height="113">
+  <img src="https://raw.githubusercontent.com/skymike/homebridge-broadlink-cloud/main/assets/broadlink-app.jpg?v=2" alt="BroadLink international app logo" width="140" height="140">
 </p>
 
 # Homebridge BroadLink Cloud
 
 Control BroadLink RM MAX remotes from Apple Home through the BroadLink cloud.
 
-[![npm](https://img.shields.io/npm/v/homebridge-broadlink-cloud)](https://www.npmjs.com/package/homebridge-broadlink-cloud)
+[![npm](https://img.shields.io/npm/v/homebridge-broadlink-cloud?cacheSeconds=300&refresh=1)](https://www.npmjs.com/package/homebridge-broadlink-cloud)
 [![Build](https://github.com/skymike/homebridge-broadlink-cloud/actions/workflows/ci.yml/badge.svg)](https://github.com/skymike/homebridge-broadlink-cloud/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
