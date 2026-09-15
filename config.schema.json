@@ -7,6 +7,8 @@
     "properties": {
       "name": {"type":"string","default":"BroadLink Cloud"},
       "sessionFile": {"title":"Session file (absolute path)","type":"string","required":true},
+      "email": {"title":"BroadLink account email","type":"string","description":"Optional: enter together with your password to automatically re-login when the saved session expires."},
+      "password": {"title":"BroadLink account password","type":"string","format":"password","description":"Enter directly here in Homebridge. Used only for account re-login; never included in plugin logs."},
       "airConditioners": {
         "type":"array", "title":"TCL AC with RM MAX room sensor", "items": {
           "type":"object", "properties": {

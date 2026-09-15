@@ -12,6 +12,10 @@ const LICENSE = '5eda600025ae5057181daaa2124f79b7';
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const identifier = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0 && !/[\x00-\x1f\x7f]/.test(value);
 const malformed = () => new Error('Invalid cloud response');
+const EXPIRED_SESSION_STATUSES = new Set([-1012, -1009, -1000, 10011, -30129]);
+export class CloudSessionExpiredError extends Error {
+  constructor() { super('Cloud session expired; authentication required'); this.name = 'CloudSessionExpiredError'; }
+}
 
 export class BroadlinkCloudClient {
   #session: CloudSession;
@@ -69,13 +73,15 @@ export class BroadlinkCloudClient {
       });
       if (!response.ok) throw new Error('Cloud HTTP request failed');
       const payload: unknown = await response.json();
+      if (record(payload) && typeof payload.status === 'number' && EXPIRED_SESSION_STATUSES.has(payload.status)) throw new CloudSessionExpiredError();
       if (!record(payload) || payload.status !== 0 || !record(payload.data)) throw malformed();
       return payload.data;
     };
     try {
       return await Promise.race([operation(), deadline]);
-    } catch {
+    } catch (error) {
       // Deliberately exclude upstream text, payloads and error causes (which may contain credentials).
+      if (error instanceof CloudSessionExpiredError) throw new CloudSessionExpiredError();
       throw new Error(controller.signal.aborted ? 'Cloud request timed out' : 'Cloud request failed');
     } finally {
       clearTimeout(timer);

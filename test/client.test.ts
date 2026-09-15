@@ -6,6 +6,27 @@ const session = { userId: 'test-user', loginSession: 'test-session', familyId: '
 const profile = { endpointId: 'remote-1', familyid: 'test-family', userid: 'test-user', irData: null, ircodeDesc: '{"profile":"ac","opaque":42}', channelList: null };
 const fixtureClient = (payload: unknown) => new BroadlinkCloudClient(session, { fetch: async () => Response.json(payload) });
 
+test('known account-session statuses produce a typed sanitized expiry error', async () => {
+  for (const status of [-1012, -1009, -1000, 10011, -30129]) {
+    await assert.rejects(fixtureClient({ status, msg: 'PRIVATE credentials' }).listDevices(), error => {
+      assert.equal((error as Error).constructor.name, 'CloudSessionExpiredError');
+      assert.ok(!(error as Error).message.includes('PRIVATE'));
+      return true;
+    });
+  }
+});
+test('HTTP, network, malformed and unrelated cloud errors are never session expiry', async () => {
+  const clients = [
+    fixtureClient({ status: -1 }), fixtureClient({ status: '-1012' }), fixtureClient({ status: 0, data: null }),
+    new BroadlinkCloudClient(session, { fetch: async () => new Response('PRIVATE', { status: 401 }) }),
+    new BroadlinkCloudClient(session, { fetch: async () => { throw Error('PRIVATE'); } }),
+  ];
+  for (const client of clients) await assert.rejects(client.listDevices(), error => {
+    assert.notEqual((error as Error).constructor.name, 'CloudSessionExpiredError');
+    assert.ok(!(error as Error).message.includes('PRIVATE')); return true;
+  });
+});
+
 test('discovery emits the verified EU request and preserves endpoint extensions', async () => {
   const module = await import('../src/client.ts').catch(() => null);
   assert.ok(module?.BroadlinkCloudClient, 'client implementation is missing');

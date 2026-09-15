@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { BroadlinkCloudPlatform } from '../src/platform.ts';
 import { HomebridgeAPI } from './homebridge-runtime.ts';
 import { TCL_PROFILE_ID } from '../src/tcl.ts';
+import { CloudSessionExpiredError } from '../src/client.ts';
 
 class Characteristic {
   getter?: () => unknown;
@@ -32,6 +33,7 @@ const remote = { endpointId: 'fan1', irData: ['fanoff', '1', '2', 'lighton/off']
 function fixture(overrides: any = {}, exposeLightToggle = true) {
   const accessories: Accessory[] = [];
   const commands: string[] = [];
+  const logs: string[] = [];
   const events: Record<string, () => void> = {};
   const api: any = {
     hap: { Service: { Fanv2: 'fan', Switch: 'switch', AccessoryInformation: 'info' }, Characteristic: { Active: 'active', RotationSpeed: 'speed', On: 'on', Manufacturer: 'manufacturer', Model: 'model', SerialNumber: 'serial' }, uuid: { generate: (id: string) => id }, HAPStatus: { SERVICE_COMMUNICATION_FAILURE: -70402, INVALID_VALUE_IN_REQUEST: -70410 }, HapStatusError: class extends Error { hapStatus: number; constructor(hapStatus: number) { super(String(hapStatus)); this.hapStatus = hapStatus; } } },
@@ -47,8 +49,8 @@ function fixture(overrides: any = {}, exposeLightToggle = true) {
     createSender: () => ({ send: async (hub: any, c: any) => { assert.equal(hub.endpointId, 'hub1'); commands.push(c.codeList[0].code); } }),
     ...overrides,
   };
-  const platform = new BroadlinkCloudPlatform({ error() {}, warn() {}, info() {}, debug() {} } as any, { platform: 'BroadlinkCloud', sessionFile: 'C:/session.json', fans: [{ remoteId: 'fan1', hubId: 'hub1', exposeLightToggle }] } as any, api, deps);
-  return { platform, accessories, commands, events };
+  const platform = new BroadlinkCloudPlatform({ error(message: string) { logs.push(message); }, warn(message: string) { logs.push(message); }, info() {}, debug() {} } as any, { platform: 'BroadlinkCloud', sessionFile: 'C:/session.json', fans: [{ remoteId: 'fan1', hubId: 'hub1', exposeLightToggle }] } as any, api, deps);
+  return { platform, accessories, commands, events, logs };
 }
 test('registers before services, exposes fan levels and keeps unknown state unavailable', async () => {
   const f = fixture(); await f.platform.refresh();
@@ -291,4 +293,68 @@ test('rejects preset and thermostat interfaces for the same AC remote at startup
     acPresets: [{ id: 'cool', name: 'AC Cool', remoteId: 'ac1', hubId: 'hub1', power: true, temperature: 25, mode: 'cool', speed: 'auto', swing: false }],
     airConditioners: [{ remoteId: 'ac1', hubId: 'hub1', name: 'TCL AC' }],
   } as any, api), /Choose either acPresets or airConditioners for each AC remote/);
+});
+
+test('expired discovery renews once and restarts read-only discovery without sending commands', async () => {
+  for (const expiryLocation of ['list', 'remote']) {
+    let renewals = 0; let lists = 0;
+    const f = fixture({
+      renewSession: async () => { renewals++; return { userId: 'u', loginSession: 'renewed', familyId: 'f' }; },
+      createClient: (session: any) => ({
+        listDevices: async () => { lists++; if (expiryLocation === 'list' && session.loginSession !== 'renewed') throw new CloudSessionExpiredError(); return [{ endpointId: 'hub1' }]; },
+        getRemote: async () => { if (expiryLocation === 'remote' && session.loginSession !== 'renewed') throw new CloudSessionExpiredError(); return remote; },
+      }),
+    });
+    await Promise.all([f.platform.refresh(), f.platform.refresh()]);
+    assert.equal(renewals, 1); assert.equal(lists, 2); assert.equal(f.accessories.length, 1); assert.deepEqual(f.commands, []);
+  }
+});
+test('failed renewal backs off, retains cache and accepts an externally replaced session', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: 1_000_000 });
+  let expired = false; let renewals = 0;
+  const f = fixture({
+    renewSession: async () => { renewals++; throw Error('PRIVATE incorrect password'); },
+    createClient: () => ({ listDevices: async () => { if (expired) throw new CloudSessionExpiredError(); return [{ endpointId: 'hub1' }]; }, getRemote: async () => remote }),
+  });
+  await f.platform.refresh(); expired = true;
+  await f.platform.refresh(); await f.platform.refresh();
+  assert.equal(renewals, 1); assert.equal(f.accessories.length, 1);
+  assert.ok(f.logs.some(message => message.includes('email and password')));
+  assert.ok(!f.logs.join('').includes('PRIVATE'));
+  t.mock.timers.tick(300_001); await f.platform.refresh(); assert.equal(renewals, 2);
+  const fan = f.accessories[0].getService('fan')!;
+  await assert.rejects(fan.getCharacteristic('active').setter!(1), /-70402/);
+  expired = false; await f.platform.refresh();
+  await fan.getCharacteristic('active').setter!(1); assert.deepEqual(f.commands, ['1']);
+});
+test('generic discovery failures do not renew and physical command failures never replay', async () => {
+  let renewals = 0;
+  const broken = fixture({ renewSession: async () => { renewals++; throw Error('unexpected'); }, createClient: () => ({ listDevices: async () => { throw Error('network'); } }) });
+  await broken.platform.refresh(); assert.equal(renewals, 0);
+  let sends = 0;
+  const f = fixture({ renewSession: async () => { renewals++; throw Error('unexpected'); }, createSender: () => ({ send: async () => { sends++; throw new CloudSessionExpiredError(); } }) });
+  await f.platform.refresh(); await assert.rejects(f.accessories[0].getService('fan')!.getCharacteristic('speed').setter!(50), /-70402/);
+  assert.equal(renewals, 0); assert.equal(sends, 1);
+});
+test('renewed session rejected by cloud does not cause a second login or discovery loop', async () => {
+  let renewals = 0; let lists = 0;
+  const f = fixture({ renewSession: async () => { renewals++; return { userId: 'u', loginSession: 'new', familyId: 'f' }; }, createClient: () => ({ listDevices: async () => { lists++; throw new CloudSessionExpiredError(); } }) });
+  await f.platform.refresh(); assert.equal(renewals, 1); assert.equal(lists, 2); assert.equal(f.accessories.length, 0);
+});
+test('expiry swallowed inside AC discovery still renews once and creates the preset without a command', async () => {
+  const api = new HomebridgeAPI(); const accessories: any[] = []; let renewals = 0; let sends = 0;
+  api.registerPlatformAccessories = (_p: string, _n: string, list: any[]) => { accessories.push(...list); };
+  const platform = new BroadlinkCloudPlatform({ error() {}, warn() {}, info() {}, debug() {} } as any, {
+    platform: 'BroadlinkCloud', sessionFile: 'C:/session.json',
+    acPresets: [{ id: 'cool', name: 'Cool', remoteId: 'ac1', hubId: 'hub1', power: true, temperature: 25, mode: 'cool', speed: 'auto', swing: false }],
+  } as any, api, {
+    readSession: async () => ({ userId: 'u', loginSession: 'old', familyId: 'f' }),
+    renewSession: async () => { renewals++; return { userId: 'u', loginSession: 'new', familyId: 'f' }; },
+    createClient: session => ({ listDevices: async () => [{ endpointId: 'hub1' }], getRemote: async () => {
+      if (session.loginSession === 'old') throw new CloudSessionExpiredError();
+      return { ...remote, endpointId: 'ac1', description: { codeUrl: `https://example.invalid/code?ircodeid=${TCL_PROFILE_ID}` } };
+    } }),
+    createControl: () => ({ sendCode: async () => { sends++; } }),
+  });
+  await platform.refresh(); assert.equal(renewals, 1); assert.equal(accessories.length, 1); assert.equal(sends, 0); api.emit('shutdown');
 });

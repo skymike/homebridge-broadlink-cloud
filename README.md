@@ -1,6 +1,6 @@
 # BroadLink Cloud for Homebridge
 
-Private alpha for RM MAX remotes stored in BroadLink's EU cloud. Separate from AUX Cloud.
+Private integration for RM MAX remotes stored in BroadLink's EU cloud. Separate from AUX Cloud.
 
 ## Features
 
@@ -14,7 +14,7 @@ Physical verification: living-room fan speed 1 and Off, and TCL Cool 25°C and O
 
 ## Requirements and limitations
 
-Node.js 22.18+ or 24, Homebridge 1.8+ or 2, online RM MAX, and a current EU-region account session. Automatic login and renewal are not implemented; the offline login encoder is research groundwork only. The exact configured TCL profile is checked before commands are enabled; other TCL profiles are unsupported.
+Node.js 22.18+ or 24, Homebridge 1.8+ or 2, online RM MAX, and a current EU-region account session. Optional email/password settings enable automatic re-login when the saved session expires. Password login is covered by protocol tests but awaits live verification with credentials entered by the owner. The exact configured TCL profile is checked before commands are enabled; other TCL profiles are unsupported.
 
 Fan/AC settings reflect acknowledged commands, not appliance feedback. Physical remotes can make the thermostat's last-commanded settings stale. Heating/cooling activity is an estimate from commanded mode, target and measured room temperature, not compressor telemetry. Commanded power starts unknown after restart; select an explicit Off/Heat/Cool/Auto mode before changing target temperature. Cloud failures preserve cached accessories and commands are never automatically retried. Multiple codes per fan button are rejected until their sequence timing is verified.
 
@@ -22,7 +22,7 @@ The RM MAX temperature sensor must be in the same room as the AC. The platform p
 
 ## Setup
 
-Run `npm install --ignore-scripts`, `npm test`, `npm run build`, then `npm pack`. Install the resulting tarball through your Homebridge installation's normal plugin workflow. This alpha has not been installed on the production Homebridge host.
+Run `npm install --ignore-scripts`, `npm test`, `npm run build`, then `npm pack`. Install the resulting tarball through your Homebridge installation's normal plugin workflow. The package has no additional runtime dependencies.
 
 Store an existing authenticated session outside the plugin and source control, readable only by the Homebridge service account:
 
@@ -53,7 +53,7 @@ Add to Homebridge's `platforms` array:
 }
 ```
 
-The session file is reread on each refresh. Replace it with a fresh session when expired. Sessions and saved codes are not placed in accessory caches or logs.
+The session file is reread on each refresh. In Homebridge plugin settings, enter both your BroadLink email and password to enable automatic re-login. Blank fields keep session-only operation. Credentials remain in Homebridge configuration; protect its backups. Renewal preserves the same account and family, atomically replaces the protected session file, and retries read-only discovery once. Failed renewal attempts have a five-minute cooldown; appliance commands are never replayed. Without credentials, replace expired sessions manually. Sessions and saved codes are not placed in accessory caches or logs.
 
 Visible fan button names determine mapping: `Fanoff`, contiguous numeric labels starting at `1`, optional `LightOn/Off`. The tested fans have six levels; the template's internal `on` function actually toggles the light. Light Toggle is a momentary action, not the actual light's on/off state.
 

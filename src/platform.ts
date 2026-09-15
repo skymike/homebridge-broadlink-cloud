@@ -1,7 +1,6 @@
-import { readFile } from 'node:fs/promises';
 import { isAbsolute, win32 } from 'node:path';
 import type { API, Logger, PlatformAccessory, PlatformConfig, Service } from 'homebridge';
-import { BroadlinkCloudClient } from './client.ts';
+import { BroadlinkCloudClient, CloudSessionExpiredError } from './client.ts';
 import type { CloudSession, Endpoint, Remote, RemoteCommand } from './client.ts';
 import { buildFanMapping } from './fan-mapping.ts';
 import type { FanMapping } from './fan-mapping.ts';
@@ -10,6 +9,7 @@ import { BroadlinkCloudControl } from './control.ts';
 import { AcThermostatCoordinator } from './ac-thermostat.ts';
 import { BroadlinkCloudSensors } from './sensors.ts';
 import type { SensorReading } from './sensors.ts';
+import { SessionManager } from './session.ts';
 
 export const PLUGIN_NAME = 'homebridge-broadlink-cloud';
 export const PLATFORM_NAME = 'BroadlinkCloud';
@@ -17,6 +17,7 @@ interface FanConfig { remoteId: string; hubId: string; name?: string; exposeLigh
 interface Sender { send(hub: Endpoint, command: RemoteCommand): Promise<void> }
 interface Dependencies {
   readSession(path: string): Promise<CloudSession>;
+  renewSession(): Promise<CloudSession>;
   createClient(session: CloudSession): { listDevices(): Promise<Endpoint[]>; getRemote(id: string): Promise<Remote> };
   createSender(session: CloudSession): Sender;
   createControl(session: CloudSession): { sendCode(hub: Endpoint, code: string): Promise<void> };
@@ -27,8 +28,7 @@ interface FanRuntime {
   mapping?: FanMapping; hub?: Endpoint; sender?: Sender; speed?: number;
   queue: Promise<void>;
 }
-const defaults: Dependencies = {
-  readSession: async path => JSON.parse(await readFile(path, 'utf8')) as CloudSession,
+const defaults: Omit<Dependencies, 'readSession' | 'renewSession'> = {
   createClient: session => new BroadlinkCloudClient(session),
   createControl: session => new BroadlinkCloudControl(session),
   createSensors: session => new BroadlinkCloudSensors(session),
@@ -54,11 +54,14 @@ export class BroadlinkCloudPlatform {
   private readonly pendingUpdates = new Set<ReturnType<typeof setImmediate>>();
   private refreshing?: Promise<void>;
   private stopped = false;
+  private nextRenewalAt = 0;
 
   constructor(log: Logger, config: PlatformConfig, api: API, deps: Partial<Dependencies> = {}) {
-    this.log = log; this.api = api; this.deps = { ...defaults, ...deps };
+    this.log = log; this.api = api;
     this.sessionFile = config.sessionFile;
     if (typeof this.sessionFile !== 'string' || !(isAbsolute(this.sessionFile) || win32.isAbsolute(this.sessionFile))) throw new Error('sessionFile must be an absolute path');
+    const manager = new SessionManager({ sessionFile: this.sessionFile, email: config.email, password: config.password });
+    this.deps = { ...defaults, readSession: () => manager.getSession(), renewSession: () => manager.renew(), ...deps };
     const fans = config.fans === undefined ? [] : config.fans;
     if (!Array.isArray(fans) || fans.some((fan: FanConfig) => !fan || typeof fan.remoteId !== 'string' || !fan.remoteId.trim() || typeof fan.hubId !== 'string' || !fan.hubId.trim())) throw new Error('Each fan requires explicit remoteId and hubId');
     this.configured = fans;
@@ -113,11 +116,16 @@ export class BroadlinkCloudPlatform {
     return this.refreshing;
   }
 
-  private async discover(): Promise<void> {
+  private async discover(allowRenewal = true, renewedSession?: CloudSession): Promise<void> {
     try {
-      const session = await this.deps.readSession(this.sessionFile);
-      const client = this.deps.createClient(session);
-      const endpoints = await client.listDevices();
+      const session = renewedSession ?? await this.deps.readSession(this.sessionFile);
+      const rawClient = this.deps.createClient(session);
+      const endpoints = await rawClient.listDevices();
+      let remoteSessionExpired = false;
+      const client = { getRemote: async (id: string) => {
+        try { return await rawClient.getRemote(id); }
+        catch (error) { if (error instanceof CloudSessionExpiredError) remoteSessionExpired = true; throw error; }
+      } };
       const fanSender = this.deps.createSender(session);
       const sender: Sender = { send: (hub, command) => this.onHub(hub, () => fanSender.send(hub, command)) };
       const rawControl = this.deps.createControl(session);
@@ -143,17 +151,35 @@ export class BroadlinkCloudPlatform {
           }
           runtime.mapping = mapping; runtime.hub = hub; runtime.sender = sender; runtime.available = true;
           this.bind(runtime);
-        } catch {
+        } catch (error) {
+          if (error instanceof CloudSessionExpiredError) throw error;
           const fan = this.fans.get(config.remoteId); if (fan) fan.available = false;
           this.log.warn('Fan discovery failed; cached accessory retained.');
         }
       }
       await this.acPresets.refresh(endpoints, client, control);
+      if (remoteSessionExpired) throw new CloudSessionExpiredError();
       await this.airConditioners.refresh(endpoints, client, control, sensors);
-    } catch {
+      if (remoteSessionExpired) throw new CloudSessionExpiredError();
+    } catch (error) {
       this.acPresets.unavailable();
       this.airConditioners.unavailable();
       for (const fan of this.fans.values()) fan.available = false;
+      if (error instanceof CloudSessionExpiredError) {
+        if (allowRenewal && !this.stopped && Date.now() >= this.nextRenewalAt) {
+          this.nextRenewalAt = Date.now() + 300_000;
+          try {
+            const session = await this.deps.renewSession();
+            if (!this.stopped) await this.discover(false, session);
+            return;
+          } catch {
+            this.log.error('Cloud sign-in failed. Check the email and password configured in Homebridge, or replace the session file. Login retries are limited to once every five minutes.');
+            return;
+          }
+        }
+        this.log.error('Cloud session expired. Configure email and password in Homebridge or replace the session file; automatic login retries are limited to once every five minutes.');
+        return;
+      }
       this.log.error('Cloud refresh failed; check session file and connectivity. Cached accessories retained.');
     }
   }
