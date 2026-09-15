@@ -1,14 +1,18 @@
 {
   "name": "homebridge-broadlink-cloud",
-  "version": "0.3.0",
-  "private": true,
+  "version": "0.3.1",
   "type": "module",
   "description": "Homebridge cloud setup, configurable fan remotes and command buttons for BroadLink RM MAX",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "keywords": [
     "homebridge-plugin",
     "broadlink",
-    "fan"
+    "rm-max",
+    "homekit",
+    "ir",
+    "rf",
+    "fan",
+    "air-conditioner"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +20,13 @@
     "dist/",
     "config.schema.json",
     "README.md",
-    "homebridge-ui/"
+    "homebridge-ui/",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "docs/configuration.md",
+    "docs/ac-controls.md"
   ],
   "engines": {
     "node": ">=22.18.0",
@@ -25,7 +35,8 @@
   "scripts": {
     "test": "node --test test/*.test.ts",
     "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build"
   },
   "peerDependencies": {
     "homebridge": "^1.8.0 || ^2.0.0"
@@ -42,5 +53,14 @@
   },
   "dependencies": {
     "@homebridge/plugin-ui-utils": "2.2.6"
+  },
+  "author": "skymike",
+  "homepage": "https://github.com/skymike/homebridge-broadlink-cloud#readme",
+  "bugs": {
+    "url": "https://github.com/skymike/homebridge-broadlink-cloud/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

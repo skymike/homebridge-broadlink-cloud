@@ -1,105 +1,120 @@
-# BroadLink Cloud for Homebridge
+# Homebridge BroadLink Cloud
 
-Private integration for RM MAX remotes stored in BroadLink's EU cloud. Separate from AUX Cloud.
+Control BroadLink RM MAX remotes from Apple Home through the BroadLink cloud.
 
-## Features
+[![npm](https://img.shields.io/npm/v/homebridge-broadlink-cloud)](https://www.npmjs.com/package/homebridge-broadlink-cloud)
+[![Build](https://github.com/skymike/homebridge-broadlink-cloud/actions/workflows/ci.yml/badge.svg)](https://github.com/skymike/homebridge-broadlink-cloud/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-- Guided Homebridge sign-in, home selection, hub/remote discovery and command mapping.
-- Ceiling fans with configurable command names, ordered speeds, explicit Off and optional momentary light toggle.
-- Generic single-code learned IR/RF commands exposed as momentary HomeKit buttons.
-- Verified TCL GYKQ-03_1014 thermostat: Off/Heat/Cool/Auto, 16–30°C, grouped fan-speed, swing, Dry and Fan-only controls.
-- Real room temperature/humidity from the RM MAX, polled every minute. Readings older than three minutes are unavailable.
-- Direct cloud control: no running Android app or emulator required.
+[Installation](#installation) · [Setup](#setup) · [Configuration](docs/configuration.md) · [Troubleshooting](#troubleshooting) · [Release notes](CHANGELOG.md)
 
-## Guided setup
+## Introduction
 
-Install the built tarball with its dependencies through your Homebridge plugin workflow. Node.js 22.18+ or 24 and Homebridge 1.8+ or 2 are required. The custom setup screen uses Homebridge's official `@homebridge/plugin-ui-utils` dependency.
+Homebridge BroadLink Cloud exposes remotes configured in the BroadLink app to Apple Home. Use the guided settings screen to sign in, select a home, discover your RM MAX and map remote commands to HomeKit controls. No Android emulator or running phone app is needed after setup.
 
-1. Open **Plugins → BroadLink Cloud → Settings**.
-2. Sign in with your BroadLink email/password and select your home.
-3. Discover the home, then choose **Save selected account**. Login/discovery alone do not replace the saved session.
-4. Select the RM hub and a remote, then load its commands.
-5. Choose a fan, momentary command button or supported TCL thermostat. For a fan, select Off and arrange speeds from lowest to highest; optionally choose its light toggle.
-6. Review, save mappings and restart Homebridge.
+This independent, unofficial integration is not affiliated with BroadLink, Apple or the Homebridge project. It is not a Homebridge Verified plugin.
 
-For an existing configuration, use **Discover saved account**. Your existing mappings remain supported. The setup screen never sends appliance commands. Remote metadata is whitelisted: device cookies, session tokens, keys and raw learned code payloads are not returned to the browser.
+## Supported devices and features
 
-Email/password are stored in Homebridge configuration for automatic re-login; protect that file and its backups. Sessions are stored separately with owner-only permissions. A configured account cannot be switched to another account/home while device mappings remain. Use a separate instance or explicitly remove those mappings first. Device pairing and remote learning still happen in the BroadLink app.
+| Device or feature | Apple Home control | Support |
+| --- | --- | --- |
+| RM MAX ceiling fan remotes | Power, configurable speeds, optional light-toggle button | Single-code commands with configurable names |
+| Learned IR/RF commands | Momentary switches | One supported command per button |
+| TCL GYKQ-03_1014 AC profile | Thermostat, fan speeds, swing, Dry and Fan Only | This specific profile only |
+| RM MAX room sensors | AC current temperature and humidity | Hub must be in the AC's room |
+| Cloud account | Guided login, home selection and session renewal | EU region only |
 
-## Compatibility and state
+Other RM models, regions and arbitrary AC profiles are not currently validated. Multi-code sequences and ambiguous duplicate names cannot be mapped. Pairing and IR/RF learning remain in the BroadLink app.
 
-EU cloud is the currently supported region. Arbitrary AC profiles, multi-code sequences and every RM model are not claimed as supported. Generic buttons can expose available learned commands but cannot create full thermostat control for an unsupported AC profile. Duplicate command names and multi-code sequences are rejected.
+**Remote-controlled appliance state is estimated.** Fan and AC settings track acknowledged commands, not physical feedback. Other remotes may leave HomeKit state out of date. Sensor readings are measured; the AC regulates itself using its own sensor.
 
-Fan/AC settings reflect acknowledged commands, not physical feedback. External remotes can make them stale. Fans initially display Off after restart until a command is acknowledged; this default sends nothing. AC defaults are 25°C, Auto fan, swing off and unknown power displayed as Off. Select an explicit AC mode before a temperature-only command. Startup and discovery never transmit device commands. Failed physical commands are never automatically retried.
+## Prerequisites
 
-The RM MAX sensor must be in the AC's room. Heating/cooling activity is estimated from measured temperature and last-commanded mode/target, not compressor telemetry. The AC still regulates itself using its own sensor; the plugin does not run a separate thermostat loop.
+- A running Homebridge installation and current Homebridge UI for guided setup.
+- Node.js 22.18+; tested on Node.js 22 and 24.
+- Homebridge 1.8+ or 2; CI covers 1.11.4 and 2.4.0.
+- A BroadLink EU account with an online RM MAX and configured remotes.
+- Internet access from Homebridge and the RM MAX.
 
-Live verification: living-room fan speed1/Off and TCL Cool25/Off were physically confirmed by the owner. Sensor reads matched BroadLink. Password login, family listing and same-account session renewal were verified on the tested EU account. Other fan speeds, guest fan, light toggle and other AC modes have not been physically verified. The TCL encoder matches eleven offline outputs generated by the actual Android SDK.
+## Installation
 
-## AC controls in Apple Home
+In **Homebridge UI → Plugins**, search for `homebridge-broadlink-cloud` and install it.
 
-Open the AC group to access **AC Fan Auto**, **AC Fan Low**, **AC Fan Medium**, **AC Fan High**, **AC Swing**, **AC Dry** and **AC Fan Only**. The accessory settings can show separate tiles.
+For a manually managed installation:
 
-Fan-speed switches select one speed: selecting another clears the previous selection; turning off the selected speed leaves it selected. Swing is an on/off setting. Temperature/mode changes preserve speed and swing. While power is off or unknown, speed/swing choices prepare the next command without operating the AC.
-
-Dry/Fan Only turn the AC on in that mode; turning off its active mode switch sends Off. Heat/Cool/Auto clear the special-mode switches. Thermostat Off always sends Off. HomeKit Thermostat lacks Dry/Fan-only values, so its mode displays Off while the corresponding named switch is active. This TCL profile ignores target temperature in Dry/Fan-only modes. Auto fan in Fan Only mode transmits Medium speed. Timer, turbo and horizontal swing are unsupported by this profile.
-
-## Manual configuration and legacy setup
-
-The optional `sessionFile` defaults to `broadlink-session.json` in Homebridge storage. Guided setup manages it. Existing protected bootstrap files remain supported:
-
-```json
-{"userId":"YOUR_USER_ID","loginSession":"YOUR_SESSION","familyId":"YOUR_FAMILY_ID"}
+```sh
+npm install -g homebridge-broadlink-cloud
 ```
 
-A configurable fan and generic button example:
+Follow your installation's normal plugin permissions and update procedure. Check the [release notes](CHANGELOG.md) before upgrading.
 
-```json
-{
-  "platform": "BroadlinkCloud",
-  "name": "BroadLink Cloud",
-  "fans": [{
-    "name": "Bedroom Fan",
-    "remoteId": "FAN_REMOTE_ID",
-    "hubId": "RM_MAX_ID",
-    "exposeLightToggle": true,
-    "commands": {"off": "Stop", "speeds": ["Low", "Medium", "High"], "lightToggle": "Light"}
-  }],
-  "buttons": [{
-    "id": "tv-volume-up",
-    "name": "TV Volume Up",
-    "remoteId": "TV_REMOTE_ID",
-    "hubId": "RM_MAX_ID",
-    "command": "Volume +"
-  }],
-  "airConditioners": [{
-    "name": "Living Room AC",
-    "remoteId": "AC_REMOTE_ID",
-    "hubId": "RM_MAX_ID"
-  }]
-}
-```
+## Setup
 
-Command names match exactly, including case. Keep button IDs stable to preserve HomeKit identity. Removing a mapping disables the cached accessory; it does not erase pairing information. A momentary button is an action, not the appliance's actual on/off state.
+1. Open **Plugins → Homebridge Broadlink Cloud → Plugin Config**.
+2. Expand **Sign in or reconnect** and enter your BroadLink email/password.
+3. Select your home, discover its devices, then choose **Save selected account**.
+4. Choose the RM hub and remote, then **Load remote commands**.
+5. Choose a ceiling fan, momentary command button or supported TCL AC. For fans, select Off, arrange speed commands from lowest to highest, and optionally select a light toggle.
+6. Add the mapping, review the list, select **Save mappings**, and restart Homebridge.
 
-Without explicit `commands`, legacy fan mapping uses `Fanoff`, contiguous numeric speed labels starting at `1`, and optional `LightOn/Off` (case-insensitive). In the tested template, the internal `on` function toggles the light; it is not reliable as fan On.
+For an existing installation, choose **Discover saved account**. Discovery and mapping do not operate appliances. Signing in alone does not replace the saved account.
 
-The session file is reread each refresh. Email/password enable same-account renewal with a five-minute failed-login cooldown and one read-only discovery retry. No physical command replay occurs. Credentials and codes are not placed in accessory caches or logs. Without credentials, expired sessions must be replaced manually. Never share raw cloud discovery output; it includes device credentials.
+See the [configuration reference](docs/configuration.md) for examples, stable button IDs, legacy mappings and session management. See [TCL AC controls](docs/ac-controls.md) for grouped fan, swing and special-mode switches.
 
-Optional standalone `acPresets` require `id`, `name`, `remoteId`, `hubId`, `power`, integer `temperature`16–30, `mode`(auto/cool/dry/fan/heat), `speed`(auto/low/medium/high), and boolean `swing`. They send full-state commands and reset to Off. Choose either presets or thermostat for each AC remote.
+## Behavior and limitations
 
-## Development and distribution
+- Fans initially display Off after restart until a command is acknowledged; this sends nothing.
+- AC power initially appears Off/unknown, with staged defaults of 25°C, Auto fan and swing off. Select an explicit AC mode before a temperature-only command.
+- AC fan/swing choices while power is off prepare the next command.
+- Momentary switches reset to Off; they represent actions, not appliance state.
+- Sensors are polled every minute; readings older than three minutes become unavailable.
+- Failed physical commands are never automatically replayed.
+- Cloud availability and changes to BroadLink's unofficial protocol may affect operation.
+
+Fan speed 1/Off and TCL Cool 25°C/Off have been physically verified on one RM MAX installation. Other commands have automated coverage but are not all physically verified. The TCL encoder is checked against eleven SDK-generated reference outputs. Broader device reports are welcome.
+
+## Troubleshooting
+
+### Devices do not appear
+
+Confirm they are online in the BroadLink app, you selected the correct home, and the account uses the EU region. Try **Discover saved account** again. The remote must belong to the selected hub.
+
+### An accessory is not responding
+
+Check Homebridge logs for BroadLink errors and confirm the hub is online in the app. Reconnect in Plugin Config if the session expired. Configured credentials enable automatic same-account login.
+
+### A command cannot be mapped
+
+Explicit command names are case-sensitive. Duplicate names and multi-code sequences are rejected. Generic buttons do not provide full thermostat support for an unsupported AC profile.
+
+### AC fan speed is missing from the thermostat dial
+
+Open the AC accessory group for its named fan-speed switches. You can show grouped controls as separate tiles. [Read the AC control guide](docs/ac-controls.md).
+
+### Getting help
+
+Search [existing issues](https://github.com/skymike/homebridge-broadlink-cloud/issues) first. Include plugin, Node.js and Homebridge versions, hub model, region, expected behavior and a short redacted log excerpt. Never attach full configuration, sessions or raw discovery responses.
+
+## Privacy and security
+
+Credentials for automatic login are stored in Homebridge configuration. Protect that file and its backups. Sessions use a separate owner-only file on supported systems. Discovery exposes selected metadata to the settings UI, not device keys or learned-code payloads.
+
+Never post passwords, session tokens, device cookies or raw cloud responses. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+
+## Development
 
 ```sh
 npm install --ignore-scripts
 npm test
 npm run check
 npm run build
-npm pack
+npm pack --dry-run
 ```
 
-CI tests Node22/24 with Homebridge1/2. Tests use synthetic fixtures and a DOM setup-flow harness. Package contents exclude tests, APKs, downloaded profiles and account captures. Public application protocol constants are not account credentials.
+CI checks Node.js 22/24 against Homebridge 1/2. Tests cover protocol handling, renewal, HomeKit behavior, command mapping and the setup UI. Packages exclude tests, APKs and account captures.
 
-The repository is private and the package is not published to npm. The guided flow can be used by people you give the package to; public distribution and wider compatibility validation are separate steps. This unofficial integration is not affiliated with BroadLink.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
-Custom UI follows the [Homebridge plugin UI API](https://github.com/homebridge/plugin-ui-utils).
+## License
+
+Copyright © 2026 skymike. Released under the [MIT License](LICENSE).
