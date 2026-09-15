@@ -45,4 +45,3 @@ Without explicit `commands`, legacy fan mapping uses `Fanoff`, contiguous numeri
 The session file is reread each refresh. Email/password enable same-account renewal with a five-minute failed-login cooldown and one read-only discovery retry. No physical command replay occurs. Credentials and codes are not placed in accessory caches or logs. Without credentials, expired sessions must be replaced manually. Never share raw cloud discovery output; it includes device credentials.
 
 Optional standalone `acPresets` require `id`, `name`, `remoteId`, `hubId`, `power`, integer `temperature`16–30, `mode`(auto/cool/dry/fan/heat), `speed`(auto/low/medium/high), and boolean `swing`. They send full-state commands and reset to Off. Choose either presets or thermostat for each AC remote.
-
