@@ -36,13 +36,15 @@ test('failed saved-account discovery cannot unblock mappings from an unsaved acc
 test('HTTP browser without randomUUID can add individual commands',async()=>{
  const f=await fixture();Object.defineProperty(f.dom.window.crypto,'randomUUID',{value:undefined});await f.discover();f.select('kind','button');f.$('button-command').value='Light';await f.click('add');assert.equal(f.config()[0].buttons.length,1);assert.ok(f.config()[0].buttons[0].id);f.dom.window.close();
 });
-test('whole remote is default and imports all commands once without randomUUID',async()=>{
- const f=await fixture();Object.defineProperty(f.dom.window.crypto,'randomUUID',{value:undefined});await f.discover();assert.equal(f.$('kind').value,'remote');await f.click('add');assert.equal(f.config()[0].buttons.length,4);const ids=f.config()[0].buttons.map(b=>b.id);await f.click('add');assert.deepEqual(f.config()[0].buttons.map(b=>b.id),ids);await f.click('save');assert.equal(f.saved(),1);f.dom.window.close();
+
+test('unknown remote requires category selection and does not import raw switches',async()=>{
+ const f=await fixture();await f.discover();assert.equal(f.$('kind').value,'');await f.click('add');assert.equal(f.config()[0].buttons,undefined);assert.equal(f.$('notice').dataset.error,'true');f.dom.window.close();
 });
-test('whole bedroom fan remote imports speed control and every command',async()=>{
+test('bedroom template is detected as one fan with all three speed controls',async()=>{
  const f=await fixture();const request=f.hb.request;f.hb.request=async(path,body)=>path==='/commands'?{supportedAc:false,commands:['on','wind_speed1','wind_speed2','wind_speed3','off'].map(name=>({name,supported:true}))}:request(path,body);
- await f.discover();await f.click('add');const cfg=f.config()[0];assert.equal(cfg.fans.length,2);assert.deepEqual(cfg.fans[1].commands,{off:'off',speeds:['wind_speed1','wind_speed2','wind_speed3']});assert.equal(cfg.buttons.length,5);assert.equal(cfg.airConditioners.length,1);assert.ok(!f.requests.some(r=>r.path.includes('control')));f.dom.window.close();
+ await f.discover();assert.equal(f.$('kind').value,'fan');assert.equal(f.$('off-command').value,'off');assert.equal(f.$('speeds').querySelectorAll('select').length,3);await f.click('add');await f.click('save');const cfg=f.config()[0];assert.equal(cfg.fans.length,2);assert.deepEqual(cfg.fans[1].commands,{off:'off',speeds:['wind_speed1','wind_speed2','wind_speed3']});assert.equal(cfg.buttons,undefined);await f.click('add');assert.equal(f.config()[0].fans.length,2);f.dom.window.close();
 });
-test('whole remote with no supported commands cannot be added',async()=>{
- const f=await fixture();const request=f.hb.request;f.hb.request=async(path,body)=>path==='/commands'?{supportedAc:false,commands:[]}:request(path,body);await f.discover();await f.click('add');assert.equal(f.config()[0].buttons,undefined);assert.equal(f.$('notice').dataset.error,'true');f.dom.window.close();
+test('existing six-speed fan keeps its category and light control without command switches',async()=>{
+ const f=await fixture([{platform:'BroadlinkCloud',fans:[{name:'Existing fan',remoteId:'remote',hubId:'hub',exposeLightToggle:true}]}]);const request=f.hb.request;f.hb.request=async(path,body)=>path==='/commands'?{supportedAc:false,commands:['Fanoff','LightOn/Off','1','2','3','4','5','6','Direction','1H'].map(name=>({name,supported:true}))}:request(path,body);
+ await f.discover();assert.equal(f.$('kind').value,'fan');assert.equal(f.$('speeds').querySelectorAll('select').length,6);assert.equal(f.$('light-command').value,'LightOn/Off');await f.click('add');assert.equal(f.config()[0].fans.length,1);assert.equal(f.config()[0].buttons,undefined);f.dom.window.close();
 });

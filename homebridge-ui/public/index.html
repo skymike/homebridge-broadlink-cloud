@@ -20,9 +20,9 @@
     <label for="remote">Remote</label><select id="remote" class="form-select"></select>
     <button id="load-remote" class="btn btn-outline-primary mt-2">Load remote commands</button>
     <div id="remote-controls" hidden>
-      <label for="kind">Show in Apple Home as</label><select id="kind" class="form-select"><option value="remote">Whole remote (all commands)</option><option value="fan">Ceiling fan</option><option value="button">Momentary command button</option><option value="ac" id="ac-option" disabled>Supported TCL AC with room sensor</option></select>
+      <label for="kind">Device category</label><select id="kind" class="form-select"><option value="">Choose device category</option><option value="fan">Ceiling fan</option><option value="button">Single command (advanced)</option><option value="ac" id="ac-option" disabled>Supported TCL AC with room sensor</option></select>
       <label for="device-name">Apple Home name</label><input id="device-name" maxlength="100" class="form-control">
-      <p id="remote-fields"></p>
+      
       <div id="fan-fields">
         <label for="off-command">Fan Off command</label><select id="off-command" class="form-select"></select>
         <label>Speed commands, from lowest to highest</label><div id="speeds"></div><button id="add-speed" class="btn btn-sm btn-outline-secondary mt-2">Add speed level</button>
@@ -31,7 +31,7 @@
       <div id="button-fields" hidden><label for="button-command">Command</label><select id="button-command" class="form-select"></select><p class="small">A momentary button sends one command and resets. It does not report the appliance's physical state.</p></div>
       <p id="ac-fields" hidden>The selected remote matches the verified TCL profile. Its RM hub should be in the same room as the AC for temperature and humidity readings.</p>
       <p id="command-note" class="small"></p>
-      <button id="add" class="btn btn-primary mt-2">Add or update remote</button>
+      <button id="add" class="btn btn-primary mt-2">Add or update device</button>
     </div>
   </section>
   <section class="card p-3 mb-3"><h4>3. Review and save</h4><div id="configured"></div><button id="save" class="btn btn-success mt-2">Save mappings</button><p class="small mt-2">Restart Homebridge after saving. Saving mappings does not operate appliances. Removing a mapping disables its cached accessory.</p></section>

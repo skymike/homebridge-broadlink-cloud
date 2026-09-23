@@ -44,18 +44,17 @@
  $('hub').onchange=showRemotes;$('remote').onchange=invalidate;
  const addSpeed=selected=>{const row=document.createElement('div');row.className='speed-row';const select=document.createElement('select');select.className='form-select';select.setAttribute('aria-label','Fan speed command');fill(select,commands,'Choose speed command');if(selected)select.value=selected;const remove=document.createElement('button');remove.className='btn btn-sm btn-outline-secondary';remove.textContent='Remove';remove.onclick=()=>row.remove();row.append(select,remove);$('speeds').append(row);};
  $('add-speed').onclick=()=>addSpeed();
- const showKind=()=>{for(const type of ['remote','fan','button','ac'])$(type+'-fields').hidden=$('kind').value!==type;};$('kind').onchange=showKind;
+ const showKind=()=>{for(const type of ['fan','button','ac'])$(type+'-fields').hidden=$('kind').value!==type;};$('kind').onchange=showKind;
  $('load-remote').onclick=work(async()=>{
   const remoteId=$('remote').value;if(!remoteId)throw Error('Choose a remote first.');
   const result=await hb.request('/commands',{remoteId});loadedRemote=remoteId;commands=result.commands.filter(c=>c.supported);
   $('ac-option').disabled=!result.supportedAc;const existing=(cfg.fans??[]).find(f=>f.remoteId===remoteId);
   $('device-name').value=existing?.name??devices.find(d=>d.id===remoteId)?.name??'BroadLink Remote';
   fill($('off-command'),commands,'Choose Off command');fill($('light-command'),commands,'No light control');fill($('button-command'),commands,'Choose command');$('speeds').replaceChildren();
-  const names=new Set(commands.map(c=>c.name));const automaticOff=commands.find(c=>c.name.toLowerCase()==='fanoff')?.name;
-  $('off-command').value=existing?.commands?.off??automaticOff??'';$('light-command').value=existing?.commands?.lightToggle??(existing?.exposeLightToggle?commands.find(c=>c.name.toLowerCase()==='lighton/off')?.name:'')??'';
-  const speeds=existing?.commands?.speeds??commands.filter(c=>/^[1-9]\d*$/.test(c.name)).sort((a,b)=>Number(a.name)-Number(b.name)).map(c=>c.name);for(const speed of speeds)addSpeed(speed);if(!speeds.length)addSpeed();
-  $('kind').value=result.supportedAc?'ac':'remote';showKind();$('remote-controls').hidden=false;
-  $('remote-fields').textContent=`Imports all ${commands.length} supported commands as named momentary controls${inferredFan()?' and adds fan power/speed controls':''}. Existing mappings are retained. Review the detected commands before saving: ${commands.map(c=>c.name).join(', ')}.`;
+  const detected=inferredFan();const automaticOff=detected?.off;
+  $('off-command').value=existing?.commands?.off??automaticOff??'';$('light-command').value=existing?.commands?.lightToggle??(existing ? (existing.exposeLightToggle?detected?.lightToggle:'') : detected?.lightToggle)??'';
+  const speeds=existing?.commands?.speeds??detected?.speeds??[];for(const speed of speeds)addSpeed(speed);if(!speeds.length)addSpeed();
+  $('kind').value=result.supportedAc?'ac':(existing||detected)?'fan':'';showKind();$('remote-controls').hidden=false;
   $('command-note').textContent=result.supportedAc?'Verified TCL profile available.':commands.length?`${commands.length} single-code commands available. Unsupported sequences and duplicate names cannot be mapped.`:'No usable learned commands found. This remote may require a device-specific profile.';
  });
  $('add').onclick=work(async()=>{
@@ -63,21 +62,17 @@
   if(!loadedRemote||loadedRemote!==$('remote').value)throw Error('Load the selected remote first.');
   const name=$('device-name').value.trim();if(!name)throw Error('Enter an Apple Home name.');
   const remoteId=loadedRemote,hubId=$('hub').value;const valid=new Set(commands.map(c=>c.name));const kind=$('kind').value;
-  if(kind==='remote'){
-   if(!commands.length)throw Error('This remote has no supported commands to import.');
-   const inferred=inferredFan();cfg.fans??=[];
-   if(inferred&&!cfg.fans.some(f=>f.remoteId===remoteId))cfg.fans.push({name,remoteId,hubId,exposeLightToggle:!!inferred.lightToggle,commands:inferred});
-   for(const {name:command} of commands){const current=(cfg.buttons??[]).find(b=>b.remoteId===remoteId&&b.command===command);upsertButton(current?.name??(name+' '+command),remoteId,hubId,command);}
-  }else if(kind==='fan'){
+  if(kind==='fan'){
    const off=$('off-command').value,speeds=[...$('speeds').querySelectorAll('select')].map(s=>s.value),lightToggle=$('light-command').value;
    if(!valid.has(off)||!speeds.length||speeds.some(s=>!valid.has(s))||new Set(speeds).size!==speeds.length||speeds.includes(off)||(lightToggle&&(!valid.has(lightToggle)||lightToggle===off||speeds.includes(lightToggle))))throw Error('Choose distinct Off, speed and optional light commands. Order speeds from lowest to highest.');
    const item={name,remoteId,hubId,exposeLightToggle:!!lightToggle,commands:{off,speeds,...(lightToggle?{lightToggle}:{})}};cfg.fans??=[];const i=cfg.fans.findIndex(f=>f.remoteId===remoteId);if(i<0)cfg.fans.push(item);else cfg.fans[i]={...cfg.fans[i],...item};
   }else if(kind==='button'){
    const command=$('button-command').value;if(!valid.has(command))throw Error('Choose a supported single-code command.');upsertButton(name,remoteId,hubId,command);
-  }else{
+  }else if(kind==='ac'){
    if($('ac-option').disabled)throw Error('This AC profile is not supported.');if((cfg.acPresets??[]).some(a=>a.remoteId===remoteId))throw Error('Remove the standalone presets for this AC before adding its thermostat.');cfg.airConditioners??=[];const item={name,remoteId,hubId},i=cfg.airConditioners.findIndex(a=>a.remoteId===remoteId);if(i<0)cfg.airConditioners.push(item);else cfg.airConditioners[i]={...cfg.airConditioners[i],...item};
   }
-  await update();configured();tell('Mapping added to the draft. Review and save below.');
+  if(!['fan','button','ac'].includes(kind))throw Error('Choose the device category, then review its controls.');
+  await update();configured();tell('Device added to the draft. Review and save below.');
  });
  $('save').onclick=work(async()=>{if(pendingAccount)throw Error('Save the selected account first.');await update();await hb.savePluginConfig();tell('Mappings saved. Restart Homebridge to apply.');});
  $('advanced').ontoggle=()=>{$('advanced').open?hb.showSchemaForm():hb.hideSchemaForm();};

@@ -1,5 +1,9 @@
 # Release notes
 
+## 0.3.5 — 2026-09-23
+
+Replace bulk command-switch import with device-category discovery. Recognized fan remotes populate one fan accessory with speed/Off/light mappings; unknown remotes require manual category selection. Existing fan mappings are preserved.
+
 ## 0.3.4 — 2026-09-23
 
 - Whole-remote import adds every supported command in one action, with fan controls for recognized speed/Off patterns.
