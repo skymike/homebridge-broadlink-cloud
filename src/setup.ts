@@ -58,14 +58,16 @@ export class SetupService {
    const counts=new Map<string,number>();for(const c of remote.irData)if(string(c.name))counts.set(c.name,(counts.get(c.name)??0)+1);
    const commands=Array.from(counts,([name,count])=>{const c=remote.irData.find(c=>c.name===name)!;return{name,supported:count===1&&c.codeList.length===1&&typeof c.codeList[0].code==='string'&&/^(?:[0-9a-f]{2})+$/i.test(c.codeList[0].code)};});
    let supportedAc=false;try{const url=new URL(String(remote.description.codeUrl));supportedAc=url.searchParams.getAll('ircodeid').length===1&&url.searchParams.get('ircodeid')===TCL_PROFILE_ID;}catch{}
-   return{commands,supportedAc};
+   const productId=this.devices.find(d=>d.endpointId===payload.remoteId)?.productId;
+   const category=productId==='000000000000000000000000ba090100'?'fan':productId==='000000000000000000000000e35a0100'?'projector':productId==='000000000000000000000000c2050100'?'ac':undefined;
+   return{commands,supportedAc,...(category?{category}:{})};
   }catch{throw new SetupError('Could not read this remote. It may not expose learned commands through this cloud API.');}
  }
  async saveSession(payload:unknown){
   const session=this.pendingSession(object(payload)?payload.familyId:undefined);
   if(!this.selected||JSON.stringify(session)!==JSON.stringify(this.selected))throw new SetupError('Discover the selected home before saving it.');
   const config=await this.deps.getConfig();const path=this.path(config);
-  const hasDevices=['fans','buttons','airConditioners','acPresets'].some(key=>Array.isArray(config[key])&&config[key].length);
+  const hasDevices=['fans','buttons','airConditioners','acPresets','devices'].some(key=>Array.isArray(config[key])&&config[key].length);
   if(hasDevices){
    let old:CloudSession;try{old=await this.deps.readSession(path,config);}catch{throw new SetupError('Existing devices require their original account session. Restore it before changing accounts.');}
    if(old.userId!==session.userId||old.familyId!==session.familyId)throw new SetupError('This configuration already contains devices from another account or home. Use a separate Homebridge instance or remove those mappings first.');

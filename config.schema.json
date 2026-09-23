@@ -195,6 +195,64 @@
             }
           }
         }
+      },
+      "devices": {
+        "title": "Category devices",
+        "type": "array",
+        "default": [],
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "remoteId": {
+              "type": "string"
+            },
+            "hubId": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "tv",
+                "set-top-box",
+                "smart-tv-box",
+                "bulb",
+                "led-strip",
+                "dvd",
+                "audio",
+                "amplifier",
+                "projector",
+                "switch",
+                "curtain",
+                "roller-shutter",
+                "door",
+                "heater",
+                "humidifier",
+                "ac-simple",
+                "air-purifier",
+                "sweeping-robot",
+                "clothes-hanger",
+                "camera",
+                "userdefine"
+              ]
+            },
+            "commands": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "name",
+            "remoteId",
+            "hubId",
+            "category",
+            "commands"
+          ]
+        }
       }
     }
   },

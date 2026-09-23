@@ -48,3 +48,10 @@ test('existing six-speed fan keeps its category and light control without comman
  const f=await fixture([{platform:'BroadlinkCloud',fans:[{name:'Existing fan',remoteId:'remote',hubId:'hub',exposeLightToggle:true}]}]);const request=f.hb.request;f.hb.request=async(path,body)=>path==='/commands'?{supportedAc:false,commands:['Fanoff','LightOn/Off','1','2','3','4','5','6','Direction','1H'].map(name=>({name,supported:true}))}:request(path,body);
  await f.discover();assert.equal(f.$('kind').value,'fan');assert.equal(f.$('speeds').querySelectorAll('select').length,6);assert.equal(f.$('light-command').value,'LightOn/Off');await f.click('add');assert.equal(f.config()[0].fans.length,1);assert.equal(f.config()[0].buttons,undefined);f.dom.window.close();
 });
+
+test('all 23 appliance categories are present and projector maps one device',async()=>{
+ const f=await fixture();await f.discover();const values=[...f.$('kind').options].map(o=>o.value);assert.equal(values.filter(v=>v&&v!=='button').length,23);f.select('kind','projector');const selects=f.$('category-commands').querySelectorAll('select');selects[0].value='Slow';selects[1].value='Stop';await f.click('add');assert.equal(f.config()[0].devices.length,1);assert.equal(f.config()[0].devices[0].category,'projector');assert.equal(f.config()[0].buttons,undefined);f.dom.window.close();
+});
+test('empty projector cannot be added and explains missing commands',async()=>{
+ const f=await fixture();const request=f.hb.request;f.hb.request=async(path,body)=>path==='/commands'?{supportedAc:false,commands:[]}:request(path,body);await f.discover();f.select('kind','projector');assert.equal(f.$('add').disabled,true);assert.match(f.$('command-note').textContent,/no usable commands/);f.dom.window.close();
+});

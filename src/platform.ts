@@ -1,3 +1,4 @@
+import {DeviceCoordinator} from './devices.ts';
 import { isAbsolute, join, win32 } from 'node:path';
 import type { API, Logger, PlatformAccessory, PlatformConfig, Service } from 'homebridge';
 import { BroadlinkCloudClient, CloudSessionExpiredError } from './client.ts';
@@ -48,6 +49,7 @@ export class BroadlinkCloudPlatform {
   private readonly configured: FanConfig[];
   private readonly acPresets: AcPresetCoordinator;
   private readonly buttons: ButtonCoordinator;
+  private readonly devices: DeviceCoordinator;
   private readonly airConditioners: AcThermostatCoordinator;
   private readonly cache = new Map<string, PlatformAccessory>();
   private readonly fans = new Map<string, FanRuntime>();
@@ -90,6 +92,9 @@ export class BroadlinkCloudPlatform {
       || (fan.exposeLightToggle !== undefined && typeof fan.exposeLightToggle !== 'boolean'))) throw new Error('Each fan requires valid remoteId, hubId and optional name and exposeLightToggle');
     for (const fan of fans) if (fan.commands !== undefined) validateFanCommands(fan.commands);
     this.configured = fans;
+    const nativeRemotes=new Set([...fans,...(config.airConditioners??[])].map(d=>d.remoteId));
+    if((config.devices??[]).some((d:{remoteId:string})=>nativeRemotes.has(d.remoteId)))throw Error('Choose one device category per remote');
+    this.devices = new DeviceCoordinator(log, config.devices, api);
     this.buttons = new ButtonCoordinator(log, config.buttons, api);
     this.acPresets = new AcPresetCoordinator(log, config.acPresets, api);
     this.airConditioners = new AcThermostatCoordinator(log, config.airConditioners, api);
@@ -107,6 +112,7 @@ export class BroadlinkCloudPlatform {
       this.stopped = true; clearInterval(this.timer);
       this.acPresets.shutdown();
       this.buttons.shutdown();
+      this.devices.shutdown();
       this.airConditioners.shutdown();
       for (const update of this.pendingUpdates) clearImmediate(update);
       this.pendingUpdates.clear();
@@ -115,6 +121,7 @@ export class BroadlinkCloudPlatform {
   }
 
   configureAccessory(accessory: PlatformAccessory): void {
+    if (this.devices.configureAccessory(accessory)) return;
     if (this.buttons.configureAccessory(accessory)) return;
     if (this.airConditioners.configureAccessory(accessory)) return;
     if (this.acPresets.configureAccessory(accessory)) return;
@@ -185,6 +192,8 @@ export class BroadlinkCloudPlatform {
           this.log.warn('Fan discovery failed; cached accessory retained.');
         }
       }
+      await this.devices.refresh(endpoints, client, control);
+      if (remoteSessionExpired) throw new CloudSessionExpiredError();
       await this.buttons.refresh(endpoints, client, control);
       if (remoteSessionExpired) throw new CloudSessionExpiredError();
       await this.acPresets.refresh(endpoints, client, control);
@@ -194,6 +203,7 @@ export class BroadlinkCloudPlatform {
     } catch (error) {
       this.acPresets.unavailable();
       this.buttons.unavailable();
+      this.devices.unavailable();
       this.airConditioners.unavailable();
       for (const fan of this.fans.values()) fan.available = false;
       if (error instanceof CloudSessionExpiredError) {

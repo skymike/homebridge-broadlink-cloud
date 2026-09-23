@@ -33,6 +33,22 @@ Other RM models, regions and arbitrary AC profiles are not currently validated. 
 
 **Remote-controlled appliance state is estimated.** Fan and AC settings track acknowledged commands, not physical feedback. Other remotes may leave HomeKit state out of date. Sensor readings are measured; the AC regulates itself using its own sensor.
 
+## Appliance categories
+
+Setup includes all 23 categories shown in the BroadLink app. Each mapped remote creates one accessory, not one accessory per command.
+
+| Categories | HomeKit representation |
+| --- | --- |
+| Fan | Fan with power, speed levels and optional light toggle |
+| Bulb, LED Strip Light | Light with separate On/Off; grouped brightness/color step actions |
+| Curtain, Roller shutter, Door, Clothes hanger | Covering/door with fully open/closed targets and optional grouped actions; position is last-commanded, not measured |
+| TV, Set-top Box, Smart TV Box, DVD, Audio, Amplifier, Projector | Grouped remote accessory with mapped power/navigation/media actions; not a native Apple TV Remote integration |
+| Switch, Heater, Humidifier, Air purifier, Sweeping robot, AC Remote Simple Type | Mapped power and grouped remote actions; no fabricated sensors or automatic climate regulation |
+| Camera, UserDefine | Grouped action controls; camera category does not provide video |
+| AC Remote Full Display | Verified TCL thermostat profile only; other encoders remain unsupported |
+
+Only mapped, available single-code commands are exposed. Cloud device category alone does not supply missing codes. Configure empty remotes in BroadLink first. Known cloud product types select their category automatically; other categories can be selected manually.
+
 ## Prerequisites
 
 - A running Homebridge installation and current Homebridge UI for guided setup.

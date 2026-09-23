@@ -20,7 +20,7 @@
     <label for="remote">Remote</label><select id="remote" class="form-select"></select>
     <button id="load-remote" class="btn btn-outline-primary mt-2">Load remote commands</button>
     <div id="remote-controls" hidden>
-      <label for="kind">Device category</label><select id="kind" class="form-select"><option value="">Choose device category</option><option value="fan">Ceiling fan</option><option value="button">Single command (advanced)</option><option value="ac" id="ac-option" disabled>Supported TCL AC with room sensor</option></select>
+      <label for="kind">Device category</label><select id="kind" class="form-select"><option value="">Choose device category</option><option value="fan">Ceiling fan</option><option value="tv">TV</option><option value="set-top-box">Set-top Box</option><option value="smart-tv-box">Smart TV Box</option><option value="bulb">Bulb</option><option value="led-strip">LED Strip Light</option><option value="dvd">DVD</option><option value="audio">Audio</option><option value="amplifier">Amplifier</option><option value="projector">Projector</option><option value="switch">Switch</option><option value="curtain">Curtain</option><option value="roller-shutter">Roller shutter</option><option value="door">Door</option><option value="heater">Heater</option><option value="humidifier">Humidifier</option><option value="ac-simple">AC Remote Simple Type</option><option value="air-purifier">Air purifier</option><option value="sweeping-robot">Sweeping robot</option><option value="clothes-hanger">Clothes hanger</option><option value="camera">Camera</option><option value="userdefine">UserDefine</option><option value="button">Single command (advanced)</option><option value="ac" id="ac-option" disabled>AC Remote Full Display</option></select>
       <label for="device-name">Apple Home name</label><input id="device-name" maxlength="100" class="form-control">
 
       <div id="fan-fields">
@@ -29,6 +29,7 @@
         <label for="light-command">Optional light-toggle command</label><select id="light-command" class="form-select"></select>
       </div>
       <div id="button-fields" hidden><label for="button-command">Command</label><select id="button-command" class="form-select"></select><p class="small">A momentary button sends one command and resets. It does not report the appliance's physical state.</p></div>
+      <div id="device-fields" hidden><p id="category-note"></p><div id="category-commands"></div></div>
       <p id="ac-fields" hidden>The selected remote matches the verified TCL profile. Its RM hub should be in the same room as the AC for temperature and humidity readings.</p>
       <p id="command-note" class="small"></p>
       <button id="add" class="btn btn-primary mt-2">Add or update device</button>

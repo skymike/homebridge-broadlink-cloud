@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.4.0 — 2026-09-23
+
+- All 23 BroadLink appliance categories available in setup, with category-specific control mappings.
+- One accessory per mapped device: native light/covering services where applicable, grouped remote actions for other categories.
+- Detect known fan/projector/AC cloud product types; manual selection remains available.
+- Empty remotes clearly require commands and cannot be added.
+- Full-display AC encoding remains limited to the verified TCL profile; remote categories do not imply video, measured positions or automatic climate regulation.
+
 ## 0.3.5 — 2026-09-23
 
 Replace bulk command-switch import with device-category discovery. Recognized fan remotes populate one fan accessory with speed/Off/light mappings; unknown remotes require manual category selection. Existing fan mappings are preserved.

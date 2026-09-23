@@ -1,6 +1,6 @@
 {
   "name": "homebridge-broadlink-cloud",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "type": "module",
   "description": "Homebridge cloud setup, configurable fan remotes and command buttons for BroadLink RM MAX",
   "license": "MIT",
