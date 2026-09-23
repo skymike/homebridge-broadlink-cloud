@@ -32,3 +32,17 @@ test('failed saved-account discovery cannot unblock mappings from an unsaved acc
  const request=f.hb.request;f.hb.request=async(path:string,body:any)=>{if(path==='/discover')throw Error('expired');return request(path,body)};
  await f.click('existing');assert.equal(f.$('remote-controls').hidden,true);assert.equal(f.$('mapping').hidden,true);await f.click('add');await f.click('save');assert.equal(f.config()[0].buttons,undefined);assert.equal(f.saved(),0);f.dom.window.close();
 });
+
+test('HTTP browser without randomUUID can add individual commands',async()=>{
+ const f=await fixture();Object.defineProperty(f.dom.window.crypto,'randomUUID',{value:undefined});await f.discover();f.select('kind','button');f.$('button-command').value='Light';await f.click('add');assert.equal(f.config()[0].buttons.length,1);assert.ok(f.config()[0].buttons[0].id);f.dom.window.close();
+});
+test('whole remote is default and imports all commands once without randomUUID',async()=>{
+ const f=await fixture();Object.defineProperty(f.dom.window.crypto,'randomUUID',{value:undefined});await f.discover();assert.equal(f.$('kind').value,'remote');await f.click('add');assert.equal(f.config()[0].buttons.length,4);const ids=f.config()[0].buttons.map(b=>b.id);await f.click('add');assert.deepEqual(f.config()[0].buttons.map(b=>b.id),ids);await f.click('save');assert.equal(f.saved(),1);f.dom.window.close();
+});
+test('whole bedroom fan remote imports speed control and every command',async()=>{
+ const f=await fixture();const request=f.hb.request;f.hb.request=async(path,body)=>path==='/commands'?{supportedAc:false,commands:['on','wind_speed1','wind_speed2','wind_speed3','off'].map(name=>({name,supported:true}))}:request(path,body);
+ await f.discover();await f.click('add');const cfg=f.config()[0];assert.equal(cfg.fans.length,2);assert.deepEqual(cfg.fans[1].commands,{off:'off',speeds:['wind_speed1','wind_speed2','wind_speed3']});assert.equal(cfg.buttons.length,5);assert.equal(cfg.airConditioners.length,1);assert.ok(!f.requests.some(r=>r.path.includes('control')));f.dom.window.close();
+});
+test('whole remote with no supported commands cannot be added',async()=>{
+ const f=await fixture();const request=f.hb.request;f.hb.request=async(path,body)=>path==='/commands'?{supportedAc:false,commands:[]}:request(path,body);await f.discover();await f.click('add');assert.equal(f.config()[0].buttons,undefined);assert.equal(f.$('notice').dataset.error,'true');f.dom.window.close();
+});

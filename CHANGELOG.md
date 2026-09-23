@@ -1,5 +1,10 @@
 # Release notes
 
+## 0.3.4 — 2026-09-23
+
+- Whole-remote import adds every supported command in one action, with fan controls for recognized speed/Off patterns.
+- Fix Add on HTTP Homebridge pages without crypto.randomUUID; stable command IDs prevent duplicate imports.
+
 ## 0.3.3 — 2026-09-23
 
 Fix command discovery for template remotes with blank custom names: use the cloud function identifier as the selector. Existing named commands remain unchanged.

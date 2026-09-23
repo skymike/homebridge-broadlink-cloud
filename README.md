@@ -59,7 +59,7 @@ Follow your installation's normal plugin permissions and update procedure. Check
 2. Expand **Sign in or reconnect** and enter your BroadLink email/password.
 3. Select your home, discover its devices, then choose **Save selected account**.
 4. Choose the RM hub and remote, then **Load remote commands**.
-5. Choose a ceiling fan, momentary command button or supported TCL AC. For fans, select Off, arrange speed commands from lowest to highest, and optionally select a light toggle.
+5. Use **Whole remote (all commands)** to import all supported buttons at once. Recognized fan speed/Off patterns also add fan controls. Individual fan mapping, single-command buttons and supported TCL AC remain available.
 6. Add the mapping, review the list, select **Save mappings**, and restart Homebridge.
 
 For an existing installation, choose **Discover saved account**. Discovery and mapping do not operate appliances. Signing in alone does not replace the saved account.
