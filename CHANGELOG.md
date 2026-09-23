@@ -1,5 +1,9 @@
 # Release notes
 
+## 0.3.3 — 2026-09-23
+
+Fix command discovery for template remotes with blank custom names: use the cloud function identifier as the selector. Existing named commands remain unchanged.
+
 ## 0.3.2 — 2026-09-16
 
 Documentation-only update: adds a GitHub repository badge and the improved BroadLink app logo to the npm README. Runtime behavior is unchanged.

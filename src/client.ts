@@ -51,7 +51,9 @@ export class BroadlinkCloudClient {
     let description: unknown;
     try { description = JSON.parse(data.ircodeDesc); } catch { throw malformed(); }
     if (!record(description)) throw malformed();
-    return { ...data, endpointId, irData: (data.irData ?? []) as RemoteCommand[], ircodeDesc: data.ircodeDesc, description, channelList: data.channelList as unknown[] | null };
+    return { ...data, endpointId, irData: ((data.irData ?? []) as RemoteCommand[]).map(command =>
+      // Stock template buttons can have no custom name; retain their cloud function selector.
+      (!identifier(command.name) && identifier(command.function)) ? { ...command, name: command.function } : command), ircodeDesc: data.ircodeDesc, description, channelList: data.channelList as unknown[] | null };
   }
 
   async #request(path: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {

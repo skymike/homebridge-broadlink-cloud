@@ -130,3 +130,17 @@ test('timeout bounds a fetch that ignores cancellation and aborts its signal', {
   assert.equal(signal?.aborted, true);
   assert.equal(calls, 1);
 });
+
+test('unnamed template commands use function identifiers consistently for mapping', async () => {
+ const data={endpointId:'remote-1',ircodeDesc:'{}',channelList:null,irData:[
+  {name:'',function:'on',codeList:[{code:'aabb'}]},
+  {name:'  ',function:'wind_speed1',codeList:[{code:'ccdd'}]},
+  {name:'My Off',function:'off',codeList:[{code:'eeff'}]},
+  {name:'',codeList:[{code:'1122'}]},
+ ]};
+ const client=fixtureClient({status:0,data});
+ const remote=await client.getRemote('remote-1');
+ assert.deepEqual(remote.irData.map(c=>c.name),['on','wind_speed1','My Off','']);
+ const {selectCommand}=await import('../src/fan-mapping.ts');
+ assert.equal(selectCommand(remote,'wind_speed1').codeList[0].code,'ccdd');
+});
